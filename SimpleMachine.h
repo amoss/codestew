@@ -1,30 +1,16 @@
 #include "codestew.h"
+#include <string.h>
 
+enum {
+  OP_XOR,
+  OP_MAX
+};
 class SimpleMachine : public Machine
 {
-  const char *opcodeNames[] =
-  {
-    "xor",
-    NULL
-  };
+  static const char *opcodeNames[OP_MAX];
+public:
 
-  uint64 opcode(char *name)
-  {
-    for(uint64 i=0; opcodeNames[i]!=NULL; i++)
-      if( !strcmp(name,opcodeNames[i]) )
-        return i;
-    throw "Invalid opcode name";
-  }
-
-  Value *xor( Block *block, Value *in0, Value *in1)
-  {
-    Instruction *inst = block.instruction( XOR );
-    if( !in0->type.equals(in1->type) )
-      throw "XOR on inequal value types";
-    inst->addInput( in0 );
-    inst->addInput( in1 );
-    Value *result = block.value( in0->type )
-    inst->addOutput( result );
-    return result;
-  }
+  uint64 opcode(char *name);
+  Type *ubits(int n);
+  Value *XOR(Block *block, Value *in0, Value *in1);
 };
