@@ -1,7 +1,8 @@
+#include<vector>
 typedef unsigned long long uint64 ;
 class Type {
 public:
-  bool equals(Type *other);
+  virtual bool equals(Type *other);
 
 };
 
@@ -10,14 +11,14 @@ class UBits : public Type
 public:
   uint64 size;
   UBits(uint64 size);
+  bool equals(UBits *other);
 };
 
 class Value;
 class Block;
 class Instruction
 {
-  uint64 numInputs, inputsMax, numOutputs, outputsMax;
-  Value **inputs, **outputs;
+  std::vector<Value*> inputs, outputs;
   Block *owner;
 public:
   uint64 opcode, ref;
@@ -29,9 +30,7 @@ public:
 
 class Value
 {
-  uint64 numUses, usesMax, numDefs, defsMax;
-  Instruction **defs;
-  Instruction **uses;
+  std::vector<Instruction*> defs, uses;
 public:
   uint64 ref;
   Type *type;
@@ -41,9 +40,9 @@ public:
 
 class Block
 {
-  uint64 numInsts, instsMax, numValues, valuesMax;
-  Instruction **insts;
-  Value **values;
+  std::vector<Instruction*> insts;
+  std::vector<Value*> values;
+  std::vector<uint64> inputs, outputs;
 
 public:
   Value *value(Type *type);
