@@ -1,17 +1,14 @@
 #include<vector>
 typedef unsigned long long uint64 ;
+
 class Type {
 public:
-  virtual bool equals(Type *other);
-
-};
-
-class UBits : public Type
-{
-public:
+  enum Kind {
+    UBITS, SBITS, INT, VECTOR, MATRIX, CUSTOM
+  } kind;
   uint64 size;
-  UBits(uint64 size);
-  bool equals(UBits *other);
+  Type( Kind, uint64 );
+  bool equals(Type *other);
 };
 
 class Value;

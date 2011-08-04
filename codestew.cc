@@ -1,21 +1,15 @@
 #include<stdio.h>
 #include "codestew.h"
 
-
-UBits::UBits(uint64 size)
+Type::Type(Kind kind, uint64 y)
 {
-  this->size = size;
-}
-
-bool UBits::equals(UBits *other)
-{
-  printf("Compare UBits\n");
-  return other->size == size;
+  this->kind = kind;
+  size = y;
 }
 
 bool Type::equals(Type *other)
 {
-  return false;
+  return (kind==other->kind) && (size==other->size);
 }
 
 Instruction::Instruction(Block *owner, uint64 opcode)
