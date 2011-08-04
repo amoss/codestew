@@ -99,6 +99,12 @@ bool Block::isOutput(Value *v)
   return false;
 }
 
+std::vector<Instruction*> Block::topSort()
+{
+std::vector<Instruction*> order;
+  return order;
+}
+
 void Block::dump()
 {
   for(int i=0; i<values.size(); i++)

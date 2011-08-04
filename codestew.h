@@ -59,8 +59,11 @@ public:
   Instruction *instruction(Opcode *opcode);
   Value *input(Type *type);
   void output(Value *v);
+
   bool isInput(Value *v);
   bool isOutput(Value *v);
+  std::vector<Instruction*> topSort();
+
   void dump();
   void dot(char *filename);
 };
