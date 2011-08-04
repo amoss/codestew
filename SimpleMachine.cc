@@ -1,17 +1,13 @@
 #include "SimpleMachine.h"
 
-const char *SimpleMachine::opcodeNames[OP_MAX] =
+/* These objects are intentionally singleton objects. Their addresses are used as
+   ids to check for equality...
+*/
+static Opcode opcodes[] =
 {
-  "xor"
+#define OP_XOR 0
+  Opcode("xor",2,1)
 };
-
-uint64 SimpleMachine::opcode(char *name)
-{
-  for(uint64 i=0; i<OP_MAX; i++)
-    if( !strcmp(name,opcodeNames[i]) )
-      return i;
-  throw "Invalid opcode name";
-}
 
 Type *SimpleMachine::ubits(int n)
 {
@@ -19,7 +15,7 @@ Type *SimpleMachine::ubits(int n)
 
 Value *SimpleMachine::XOR( Block *block, Value *in0, Value *in1)
 {
-  Instruction *inst = block->instruction( OP_XOR );
+  Instruction *inst = block->instruction( &opcodes[OP_XOR] );
   if( !in0->type->equals(in1->type) )
     throw "XOR on inequal value types";
   inst->addInput( in0 );

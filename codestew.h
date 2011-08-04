@@ -1,4 +1,5 @@
 #include<vector>
+#include<string>
 typedef unsigned long long uint64 ;
 
 class Type {
@@ -9,29 +10,41 @@ public:
   uint64 size;
   Type( Kind, uint64 );
   bool equals(Type *other);
+  std::string repr();
+};
+
+class Opcode
+{
+public:
+  char const *name;
+  int inputs, outputs;
+  Opcode(char const*name, int inputs, int output);
 };
 
 class Value;
 class Block;
 class Instruction
 {
-  std::vector<Value*> inputs, outputs;
   Block *owner;
 public:
-  uint64 opcode, ref;
+  std::vector<Value*> inputs, outputs;
+  uint64 ref;
+  Opcode *opcode;
 
-  Instruction(Block *owner, uint64 opcode);
+  Instruction(Block *owner, Opcode *opcode);
   void addInput( Value *inp);
   Value *addOutput( Type *type);
 };
 
 class Value
 {
-  std::vector<Instruction*> defs, uses;
 public:
+  std::vector<Instruction*> uses;
+  Instruction *def;
   uint64 ref;
   Type *type;
   Value(Type *type);
+  bool defined() { return def!=NULL; }
 };
 
 
@@ -43,8 +56,12 @@ class Block
 
 public:
   Value *value(Type *type);
-  Instruction *instruction(uint64 opcode);
+  Instruction *instruction(Opcode *opcode);
   Value *input(Type *type);
+  void output(Value *v);
+  bool isInput(Value *v);
+  bool isOutput(Value *v);
+  void dump();
 };
 
 
