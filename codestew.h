@@ -62,6 +62,7 @@ public:
   bool isInput(Value *v);
   bool isOutput(Value *v);
   void dump();
+  void dot(char *filename);
 };
 
 

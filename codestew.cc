@@ -44,6 +44,7 @@ void Instruction::addInput( Value *inp)
 Value *Instruction::addOutput( Type *type)
 {
   Value *result = owner->value(type);
+  result->def = this;
   outputs.push_back(result);
   return result;
 }
@@ -126,4 +127,27 @@ void Block::dump()
       printf("%llu ",inst->inputs[j]->ref);
     printf("]\n");
   }
+}
+
+void Block::dot(char *filename)
+{
+FILE *f = fopen(filename,"w");
+  if(f==NULL)
+    throw "Cannot open output file";
+  fprintf(f,"digraph{\n");
+  for(int i=0; i<values.size(); i++)
+  {
+    fprintf(f,"v%d [label=\"%d : %s\"];\n", i, i, values[i]->type->repr().c_str());
+  }
+  for(int i=0; i<insts.size(); i++)
+  {
+    Instruction *inst = insts[i];
+    fprintf(f,"i%d [shape=none,label=\"%s\"];\n", i, inst->opcode->name);
+    for(int j=0; j<inst->inputs.size(); j++)
+      fprintf(f,"v%llu -> i%d;\n", inst->inputs[j]->ref, i);
+    for(int j=0; j<inst->outputs.size(); j++)
+      fprintf(f,"i%d -> v%llu;\n", i, inst->outputs[j]->ref);
+  }
+  fprintf(f,"}");
+  fclose(f);
 }

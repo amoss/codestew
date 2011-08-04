@@ -18,4 +18,5 @@ int main()
     printf("ERROR: %s\n", err);
   }
   block.dump();
+  block.dot((char*)"crap.dot");
 }
