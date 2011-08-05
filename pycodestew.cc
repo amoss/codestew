@@ -1,6 +1,6 @@
 #include <Python.h>
 #include "structmember.h"
-#include "codestew.h"
+#include "SimpleMachine.h"
 
 #define PYTYPE(NAME) static PyTypeObject NAME##Type = { \
     PyObject_HEAD_INIT(NULL) 0, "pycodestew." #NAME,  \
@@ -191,6 +191,64 @@ static PyGetSetDef Block_getseters[] = {
 
 PYTYPE(Block)
 
+typedef struct {
+    PyObject_HEAD
+    SimpleMachine *machine;
+} SimpleMachineObject;
+
+static PyObject *SimpleMachine_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
+{
+  printf("SimpleMachine new\n");
+    SimpleMachineObject *self;
+    self = (SimpleMachineObject *)type->tp_alloc(type, 0);
+    if (self != NULL) {
+    }
+    return (PyObject *)self;
+}
+
+static int SimpleMachine_init(SimpleMachineObject *self, PyObject *args, PyObject *kwds)
+{
+  printf("SimpleMachine init\n");
+  self->machine = new SimpleMachine();
+    return 0;
+}
+
+static void SimpleMachine_dealloc(SimpleMachineObject* self)
+{
+    self->ob_type->tp_free((PyObject*)self);
+}
+
+static PyObject *simpleXor(PyObject *self, PyObject *args)
+{
+  printf("Simple.XOR\n");
+  PyObject *block, *left, *right, *outType;
+  if(!PyArg_ParseTuple(args, "O(OO)O", &block, &left, &right, &outType) ||
+      block->ob_type   != &BlockType ||
+      left->ob_type    != &ValueType ||
+      right->ob_type   != &ValueType ||
+      outType->ob_type != &TypeType)
+    return NULL;
+  Value *output = ((SimpleMachineObject*)self)->machine->XOR( ((BlockObject*)block)->block, 
+                                 ((ValueObject*)left)->value, ((ValueObject*)right)->value);
+  ValueObject *result = (ValueObject*)_PyObject_New(&ValueType);
+  result->value = output;
+  return (PyObject *)result;
+}
+
+static PyMemberDef SimpleMachine_members[] = {
+  {NULL,0,0,0,NULL}  
+};
+
+static PyMethodDef SimpleMachine_methods[] = {
+  {"XOR", (PyCFunction)simpleXor, METH_VARARGS, "Create a XOR instruction in a SimpleMachine"},
+  {NULL}
+};
+static PyGetSetDef SimpleMachine_getseters[] = {
+    {NULL}  /* Sentinel */
+};
+
+PYTYPE(SimpleMachine)
+
 static PyMethodDef pycodestew_methods[] = {
     {NULL}  /* Sentinel */
 };
@@ -210,6 +268,8 @@ initpycodestew(void)
         return;
     if (PyType_Ready(&BlockType) < 0)
         return;
+    if (PyType_Ready(&SimpleMachineType) < 0)
+        return;
 
     m = Py_InitModule3("pycodestew", pycodestew_methods,
                        "Python Interface to CodeStew.");
@@ -218,6 +278,7 @@ initpycodestew(void)
     PyModule_AddObject(m, "Block", (PyObject *)&BlockType);
     PyModule_AddObject(m, "Type", (PyObject *)&TypeType);
     PyModule_AddObject(m, "Value", (PyObject *)&ValueType);
+    PyModule_AddObject(m, "SimpleMachine", (PyObject *)&SimpleMachineType);
 }
 
 }
