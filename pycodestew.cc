@@ -22,7 +22,6 @@ typedef struct {
 
 static PyObject *Type_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
 {
-  printf("Type new\n");
     TypeObject *self;
     self = (TypeObject *)type->tp_alloc(type, 0);
     if (self != NULL) {
@@ -32,13 +31,11 @@ static PyObject *Type_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
 
 static int Type_init(TypeObject *self, PyObject *args, PyObject *kwds)
 {
-  printf("Type init\n");
   char *kind;
   uint64 size;
 
   if(!PyArg_ParseTuple(args, "sk", &kind, &size))
     return -1;
-  printf("%s %llu\n", kind,size);
   if(!strcmp("ubits",kind))
     self->type = new Type(Type::UBITS,size);
   else
@@ -54,7 +51,6 @@ static void Type_dealloc(TypeObject* self)
 
 static PyObject *Type_getsize(TypeObject *self, void *closure)
 {
-  printf("Get Type.size\n");
   Py_INCREF(self->size);
   return self->size;
 }
@@ -84,7 +80,6 @@ typedef struct {
 
 static PyObject *Value_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
 {
-  printf("Value new\n");
     ValueObject *self;
     self = (ValueObject *)type->tp_alloc(type, 0);
     if (self != NULL) {
@@ -94,13 +89,11 @@ static PyObject *Value_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
 
 static int Value_init(ValueObject *self, PyObject *args, PyObject *kwds)
 {
-  printf("Value init\n");
   char *kind;
   uint64 size;
 
   if(!PyArg_ParseTuple(args, "sk", &kind, &size))
     return -1;
-  printf("%s %llu\n", kind,size);
   self->size = PyInt_FromLong(size);
   return 0;
 }
@@ -141,7 +134,6 @@ typedef struct {
 
 static PyObject *Block_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
 {
-  printf("Block new\n");
     BlockObject *self;
     self = (BlockObject *)type->tp_alloc(type, 0);
     if (self != NULL) {
@@ -151,14 +143,12 @@ static PyObject *Block_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
 
 static int Block_init(BlockObject *self, PyObject *args, PyObject *kwds)
 {
-  printf("Block init\n");
   self->block = new Block();
     return 0;
 }
 
 static PyObject *blockInput(PyObject *self, PyObject *args)
 {
-  printf("Block.input\n");
   PyObject *type;
   if(!PyArg_ParseTuple(args, "O", &type) ||
       type->ob_type != &TypeType)
@@ -168,8 +158,26 @@ static PyObject *blockInput(PyObject *self, PyObject *args)
   Value *newVal = block->input(valType);
   ValueObject *result = (ValueObject*)_PyObject_New(&ValueType);
   result->value = newVal;
-  printf("%s\n", valType->repr().c_str());
   return (PyObject*)result;
+}
+
+static PyObject *blockOutput(PyObject *self, PyObject *args)
+{
+  PyObject *value;
+  if(!PyArg_ParseTuple(args, "O", &value) ||
+      value->ob_type != &ValueType)
+    return NULL;
+  Value *native = ((ValueObject*)value)->value;
+  Block *block = ((BlockObject*)self)->block;
+  block->output(native);
+  Py_RETURN_NONE;
+}
+
+static PyObject *blockDump(PyObject *self)
+{
+  Block *block = ((BlockObject*)self)->block;
+  std::string d = block->dump();
+  return Py_BuildValue("s",d.c_str());
 }
 
 static void Block_dealloc(BlockObject* self)
@@ -183,6 +191,8 @@ static PyMemberDef Block_members[] = {
 
 static PyMethodDef Block_methods[] = {
   {"input", (PyCFunction)blockInput, METH_VARARGS, "Create an input value in the block"},
+  {"output", (PyCFunction)blockOutput, METH_VARARGS, "Mark a value as an output in the block"},
+  {"dump", (PyCFunction)blockDump, METH_NOARGS, "Dump the VDG structure as text"},
   {NULL}
 };
 static PyGetSetDef Block_getseters[] = {
@@ -198,7 +208,6 @@ typedef struct {
 
 static PyObject *SimpleMachine_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
 {
-  printf("SimpleMachine new\n");
     SimpleMachineObject *self;
     self = (SimpleMachineObject *)type->tp_alloc(type, 0);
     if (self != NULL) {
@@ -208,7 +217,6 @@ static PyObject *SimpleMachine_new(PyTypeObject *type, PyObject *args, PyObject 
 
 static int SimpleMachine_init(SimpleMachineObject *self, PyObject *args, PyObject *kwds)
 {
-  printf("SimpleMachine init\n");
   self->machine = new SimpleMachine();
     return 0;
 }
@@ -220,7 +228,6 @@ static void SimpleMachine_dealloc(SimpleMachineObject* self)
 
 static PyObject *simpleXor(PyObject *self, PyObject *args)
 {
-  printf("Simple.XOR\n");
   PyObject *block, *left, *right, *outType;
   if(!PyArg_ParseTuple(args, "O(OO)O", &block, &left, &right, &outType) ||
       block->ob_type   != &BlockType ||

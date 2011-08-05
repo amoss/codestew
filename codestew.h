@@ -1,5 +1,6 @@
 #include<vector>
 #include<string>
+#include<string.h>
 typedef unsigned long long uint64 ;
 
 class Type {
@@ -64,7 +65,7 @@ public:
   bool isOutput(Value *v);
   std::vector<Instruction*> topSort();
 
-  void dump();
+  std::string dump();
   void dot(char *filename);
 };
 

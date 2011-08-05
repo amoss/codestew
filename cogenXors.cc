@@ -17,6 +17,7 @@ int main()
   {
     printf("ERROR: %s\n", err);
   }
-  block.dump();
+  std::string d = block.dump();
+  printf("%s",d.c_str());
   block.dot((char*)"crap.dot");
 }

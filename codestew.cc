@@ -105,8 +105,10 @@ std::vector<Instruction*> order;
   return order;
 }
 
-void Block::dump()
+std::string Block::dump()
 {
+std::string result;
+char line[180];
   for(int i=0; i<values.size(); i++)
   {
     Value *v = values[i];
@@ -116,23 +118,26 @@ void Block::dump()
     else if(isOutput(v))
       annotation = "Output ";
     if( v->defined() )
-      printf("Value %d: %s%s defined(%llu) %zu uses\n", i, annotation, 
+      sprintf(line,"Value %d: %s%s defined(%llu) %zu uses\n", i, annotation, 
              v->type->repr().c_str(), v->def->ref, v->uses.size());
     else
-      printf("Value %d: %s%s undefined %zu uses\n", i, annotation,
+      sprintf(line,"Value %d: %s%s undefined %zu uses\n", i, annotation,
              v->type->repr().c_str(), v->uses.size());
+    result += line;
   }
   for(int i=0; i<insts.size(); i++)
   {
     Instruction *inst = insts[i];
-    printf("Inst %d: [", i);
+    sprintf(line,"Inst %d: [", i);
     for(int j=0; j<inst->outputs.size(); j++)
-      printf("%llu ",inst->outputs[j]->ref);
-    printf("] <- %s [", inst->opcode->name);
+      sprintf(line+strlen(line),"%llu ",inst->outputs[j]->ref);
+    sprintf(line+strlen(line),"] <- %s [", inst->opcode->name);
     for(int j=0; j<inst->inputs.size(); j++)
-      printf("%llu ",inst->inputs[j]->ref);
-    printf("]\n");
+      sprintf(line+strlen(line),"%llu ",inst->inputs[j]->ref);
+    sprintf(line+strlen(line),"]\n");
+    result += line;
   }
+  return result;
 }
 
 void Block::dot(char *filename)
