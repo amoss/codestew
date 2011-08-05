@@ -2,7 +2,70 @@
 #include "structmember.h"
 #include "codestew.h"
 
+#define PYTYPE(NAME) static PyTypeObject NAME##Type = { \
+    PyObject_HEAD_INIT(NULL) 0, "pycodestew." #NAME,  \
+    sizeof(NAME##Object), 0, (destructor)NAME##_dealloc, \
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, \
+    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE, \
+    #NAME " objects", 0, 0, 0, 0, 0, 0, \
+    NAME##_methods, NAME##_members,  \
+    NAME##_getseters, 0, 0, 0, 0, 0, (initproc)NAME##_init, \
+    0, NAME##_new };
+
 extern "C" {
+
+typedef struct {
+    PyObject_HEAD
+    Type *type;
+    PyObject *size;
+} TypeObject;
+
+static PyObject *Type_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
+{
+  printf("Type new\n");
+    TypeObject *self;
+    self = (TypeObject *)type->tp_alloc(type, 0);
+    if (self != NULL) {
+    }
+    return (PyObject *)self;
+}
+
+static int Type_init(TypeObject *self, PyObject *args, PyObject *kwds)
+{
+  printf("Type init\n");
+  self->type = new Type(Type::UBITS,64);
+  self->size = PyInt_FromLong(64);
+  return 0;
+}
+
+static void Type_dealloc(TypeObject* self)
+{
+    self->ob_type->tp_free((PyObject*)self);
+}
+
+static PyObject *Type_getsize(TypeObject *self, void *closure)
+{
+  printf("Get Type.size\n");
+  Py_INCREF(self->size);
+  return self->size;
+}
+
+static PyMemberDef Type_members[2] = {
+  //{"size", T_INT, offsetof(TypeObject, size), 0, "type size parameter"},
+    {NULL,0,0,0,NULL}  
+};
+
+static PyMethodDef Type_methods[] = {
+    //{"name", (PyCFunction)Noddy_name, METH_NOARGS, "Return the name, combining the first and last name" },
+    {NULL}
+};
+
+static PyGetSetDef Type_getseters[] = {
+    //{"size", (getter)Type_getsize, (setter)Type_setsize, "Type size parameter", NULL},
+    {"size", (getter)Type_getsize, NULL, "Type size parameter", NULL},
+    {NULL}  /* Sentinel */
+};
+PYTYPE(Type)
 
 typedef struct {
     PyObject_HEAD
@@ -17,27 +80,15 @@ static PyMethodDef Block_methods[] = {
     //{"name", (PyCFunction)Noddy_name, METH_NOARGS, "Return the name, combining the first and last name" },
     {NULL}
 };
+static PyGetSetDef Block_getseters[] = {
+    {NULL}  /* Sentinel */
+};
 static PyObject *Block_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
 {
   printf("Block new\n");
     BlockObject *self;
     self = (BlockObject *)type->tp_alloc(type, 0);
     if (self != NULL) {
-        /*self->first = PyString_FromString("");
-        if (self->first == NULL)
-          {
-            Py_DECREF(self);
-            return NULL;
-          }
-        
-        self->last = PyString_FromString("");
-        if (self->last == NULL)
-          {
-            Py_DECREF(self);
-            return NULL;
-          }
-
-        self->number = 0;*/
     }
     return (PyObject *)self;
 }
@@ -46,29 +97,6 @@ static int Block_init(BlockObject *self, PyObject *args, PyObject *kwds)
 {
   printf("Block init\n");
   self->block = new Block();
-    /*PyObject *first=NULL, *last=NULL, *tmp;
-
-    static char *kwlist[] = {"first", "last", "number", NULL};
-
-    if (! PyArg_ParseTupleAndKeywords(args, kwds, "|OOi", kwlist, 
-                                      &first, &last, 
-                                      &self->number))
-        return -1; 
-
-    if (first) {
-        tmp = self->first;
-        Py_INCREF(first);
-        self->first = first;
-        Py_XDECREF(tmp);
-    }
-
-    if (last) {
-        tmp = self->last;
-        Py_INCREF(last);
-        self->last = last;
-        Py_XDECREF(tmp);
-    }*/
-
     return 0;
 }
 
@@ -77,47 +105,7 @@ static void Block_dealloc(BlockObject* self)
     self->ob_type->tp_free((PyObject*)self);
 }
 
-static PyTypeObject BlockType = {
-    PyObject_HEAD_INIT(NULL)
-    0,                         /*ob_size*/
-    "pycodestew.Block",        /*tp_name*/
-    sizeof(BlockObject), /*tp_basicsize*/
-    0,                         /*tp_itemsize*/
-    (destructor)Block_dealloc, /*tp_dealloc*/
-    0,                         /*tp_print*/
-    0,                         /*tp_getattr*/
-    0,                         /*tp_setattr*/
-    0,                         /*tp_compare*/
-    0,                         /*tp_repr*/
-    0,                         /*tp_as_number*/
-    0,                         /*tp_as_sequence*/
-    0,                         /*tp_as_mapping*/
-    0,                         /*tp_hash */
-    0,                         /*tp_call*/
-    0,                         /*tp_str*/
-    0,                         /*tp_getattro*/
-    0,                         /*tp_setattro*/
-    0,                         /*tp_as_buffer*/
-    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE, /*tp_flags*/
-    "Block objects",           /* tp_doc */
-    0,		               /* tp_traverse */
-    0,		               /* tp_clear */
-    0,		               /* tp_richcompare */
-    0,		               /* tp_weaklistoffset */
-    0,		               /* tp_iter */
-    0,		               /* tp_iternext */
-    Block_methods,             /* tp_methods */
-    Block_members,             /* tp_members */
-    0,                         /* tp_getset */
-    0,                         /* tp_base */
-    0,                         /* tp_dict */
-    0,                         /* tp_descr_get */
-    0,                         /* tp_descr_set */
-    0,                         /* tp_dictoffset */
-    (initproc)Block_init,      /* tp_init */
-    0,                         /* tp_alloc */
-    Block_new                  /* tp_new */
-};
+PYTYPE(Block)
 
 static PyMethodDef pycodestew_methods[] = {
     {NULL}  /* Sentinel */
@@ -132,6 +120,8 @@ initpycodestew(void)
     PyObject* m;
 
     BlockType.tp_new = PyType_GenericNew;
+    if (PyType_Ready(&TypeType) < 0)
+        return;
     if (PyType_Ready(&BlockType) < 0)
         return;
 
@@ -140,6 +130,7 @@ initpycodestew(void)
 
     Py_INCREF(&BlockType);
     PyModule_AddObject(m, "Block", (PyObject *)&BlockType);
+    PyModule_AddObject(m, "Type", (PyObject *)&TypeType);
 }
 
 }
