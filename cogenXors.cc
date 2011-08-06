@@ -20,4 +20,8 @@ int main()
   std::string d = block.dump();
   printf("%s",d.c_str());
   block.dot((char*)"crap.dot");
+  std::vector<Instruction*> order = block.topSort();
+  printf("%d\n",order.size());
+  for(int i=0; i<order.size(); i++)
+    printf("%llu\n",order[i]->ref);
 }

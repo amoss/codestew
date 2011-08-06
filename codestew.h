@@ -1,5 +1,7 @@
 #include<vector>
 #include<string>
+#include<set>
+#include<iterator>
 #include<string.h>
 typedef unsigned long long uint64 ;
 
@@ -63,6 +65,7 @@ public:
 
   bool isInput(Value *v);
   bool isOutput(Value *v);
+  size_t numValues() { return values.size(); }
   std::vector<Instruction*> topSort();
 
   std::string dump();

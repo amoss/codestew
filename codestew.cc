@@ -39,6 +39,7 @@ Instruction::Instruction(Block *owner, Opcode *opcode)
 void Instruction::addInput( Value *inp)
 {
   inputs.push_back(inp);
+  inp->uses.push_back(this);
 }
 
 Value *Instruction::addOutput( Type *type)
@@ -99,9 +100,57 @@ bool Block::isOutput(Value *v)
   return false;
 }
 
+/* Compute a topological sort of the bi-partite graph; compute a valid execution order that
+   ensures every operand is computed before an instruction uses it. This is the obvious
+   transative closure approach as that method wokred out faster in Python for the graphs
+   tested than Tarjan's reverse-DFS algorithm. It might be worth implementing Tarjan's 
+   algorithm for comparison as the operation complexities in STL probably follows a different
+   trade-off and has different constant factors to the set implementation in Python.
+*/
 std::vector<Instruction*> Block::topSort()
 {
 std::vector<Instruction*> order;
+std::set<uint64> ready;
+std::set<Instruction*> done;
+  std::copy(inputs.begin(), inputs.end(), inserter(ready,ready.begin()) );
+  while(order.size() < insts.size())
+  {
+    printf("Ready %d\n",ready.size());
+    std::set<Instruction*> waiting;   // Instructions with at least one ready operand
+    for(std::set<uint64>::iterator i = ready.begin(); i!=ready.end(); i++)
+    {
+      Value *v = values[*i];
+      printf("%llu has %d uses\n", v->ref, v->uses.size());
+      for(int j=0; j<v->uses.size(); j++)
+      {
+        if(done.find(v->uses[j])==done.end())
+          waiting.insert(v->uses[j]);
+      }
+    }
+    printf("Waiting %d\n",waiting.size());
+    std::set<Instruction*> enabled;  // Instruction with all operands ready
+    for(std::set<Instruction*>::iterator i = waiting.begin(); i!=waiting.end(); i++)
+    {
+      bool allReady=true;
+      for(int j=0; j<(*i)->inputs.size(); j++)
+        if( ready.find((*i)->inputs[j]->ref) == ready.end() ) {
+          allReady=false;
+          printf("Value %llu not ready for %llu\n",(*i)->inputs[j]->ref,(*i)->ref);
+        }
+      if(allReady)
+        enabled.insert(*i);
+    }
+    printf("Enabled %d\n",enabled.size());
+    if(enabled.size()==0)           // Graph is blocked (disjoint or cyclic), abort
+      return order;
+    for(std::set<Instruction*>::iterator i=enabled.begin(); i!=enabled.end(); i++)
+    {
+      order.push_back(*i);
+      done.insert(*i);
+      for(int j=0; j<(*i)->outputs.size(); j++)
+        ready.insert((*i)->outputs[j]->ref);
+    }
+  }
   return order;
 }
 
@@ -162,3 +211,11 @@ FILE *f = fopen(filename,"w");
   fprintf(f,"}");
   fclose(f);
 }
+
+/*bool trivial(Block *block, int numRegs, char **regNames)
+{
+  if(block->numValues() > numRegs)
+    return false;
+  return true;
+}*/
+
