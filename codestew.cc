@@ -115,19 +115,19 @@ std::set<Instruction*> done;
   std::copy(inputs.begin(), inputs.end(), inserter(ready,ready.begin()) );
   while(order.size() < insts.size())
   {
-    printf("Ready %d\n",ready.size());
+    //printf("Ready %d\n",ready.size());
     std::set<Instruction*> waiting;   // Instructions with at least one ready operand
     for(std::set<uint64>::iterator i = ready.begin(); i!=ready.end(); i++)
     {
       Value *v = values[*i];
-      printf("%llu has %d uses\n", v->ref, v->uses.size());
+      //printf("%llu has %d uses\n", v->ref, v->uses.size());
       for(int j=0; j<v->uses.size(); j++)
       {
         if(done.find(v->uses[j])==done.end())
           waiting.insert(v->uses[j]);
       }
     }
-    printf("Waiting %d\n",waiting.size());
+    //printf("Waiting %d\n",waiting.size());
     std::set<Instruction*> enabled;  // Instruction with all operands ready
     for(std::set<Instruction*>::iterator i = waiting.begin(); i!=waiting.end(); i++)
     {
@@ -135,12 +135,12 @@ std::set<Instruction*> done;
       for(int j=0; j<(*i)->inputs.size(); j++)
         if( ready.find((*i)->inputs[j]->ref) == ready.end() ) {
           allReady=false;
-          printf("Value %llu not ready for %llu\n",(*i)->inputs[j]->ref,(*i)->ref);
+          //printf("Value %llu not ready for %llu\n",(*i)->inputs[j]->ref,(*i)->ref);
         }
       if(allReady)
         enabled.insert(*i);
     }
-    printf("Enabled %d\n",enabled.size());
+    //printf("Enabled %d\n",enabled.size());
     if(enabled.size()==0)           // Graph is blocked (disjoint or cyclic), abort
       return order;
     for(std::set<Instruction*>::iterator i=enabled.begin(); i!=enabled.end(); i++)
@@ -212,10 +212,31 @@ FILE *f = fopen(filename,"w");
   fclose(f);
 }
 
-/*bool trivial(Block *block, int numRegs, char **regNames)
+bool trivial(Block *block, int numRegs, char const**regNames)
 {
   if(block->numValues() > numRegs)
     return false;
+std::vector<Instruction*> schedule = block->topSort();
+  for(int i=0; i<schedule.size(); i++)
+  {
+    printf("%s %s,%s,%s\n", schedule[i]->opcode->name, 
+           regNames[schedule[i]->inputs[0]->ref],
+           regNames[schedule[i]->inputs[1]->ref],
+           regNames[schedule[i]->outputs[0]->ref]);
+  }
+
   return true;
-}*/
+}
+
+char const *x86Names[] =
+{
+  "rax", "rbx", "rcx", "rdx", "rdi", "rsi", 
+  "r8",  "r9",  "r10", "r11", "r12",  "r13",
+  "r14", "r15"
+};
+
+void x86Output(Block *block)
+{
+  trivial(block, 14, x86Names);
+}
 

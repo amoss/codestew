@@ -78,3 +78,4 @@ class Machine
   
 };
 
+void x86Output(Block *block);

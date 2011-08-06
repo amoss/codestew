@@ -24,4 +24,5 @@ int main()
   printf("%d\n",order.size());
   for(int i=0; i<order.size(); i++)
     printf("%llu\n",order[i]->ref);
+  x86Output(&block);
 }
