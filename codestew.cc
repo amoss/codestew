@@ -50,6 +50,13 @@ Value *Instruction::addOutput( Type *type)
   return result;
 }
 
+Value *Instruction::addOutput( Value *val)
+{
+  val->def = this;
+  outputs.push_back(val);
+  return val;
+}
+
 Value::Value(Type *type)
 {
   this->type = type;
@@ -81,6 +88,50 @@ Instruction *Block::instruction(Opcode *opcode)
 Instruction *result = new Instruction(this,opcode);
   result->ref = insts.size();
   insts.push_back(result);
+  return result;
+}
+
+/* Using the owner container indices as refs inside the Value and Instruction objects
+   allows a simple O(n) cloning operation for the graph. In the old CAO IR we had to
+   build dictionaries to create the bijection of vertices/edges between the original
+   and the clone. Here we can just split it into three passes:
+     1. Create valid pointers (new objects) for each value ref
+     2. Create valid pointers for each inst (mapping operands as defined in pass 1).
+     3. Patch the pointers inside each value to the instructions defined in pass 2.
+   Technically the clone is O(ve), but the degree of each instruction vertex is O(1).
+*/
+Block *Block::clone()
+{
+Block *result = new Block();
+  // Uses and def ptrs will be mapped in another pass.
+  // Shallow sharing of types, assumes a small external set
+  for(int i=0; i<values.size(); i++)
+  {
+    Value *v = new Value(values[i]->type);
+    result->values.push_back(v); 
+    v->ref = i;
+  }
+
+  // Shallow sharing of opcodes, assumes a small external set
+  for(int i=0; i<insts.size(); i++)
+  {
+    Instruction *ins = new Instruction(result, insts[i]->opcode);
+    result->insts.push_back(ins); 
+    // Refs = vector indices = easy mapping once new ptrs are stored in previous loop
+    for(int j=0; j<insts[i]->inputs.size(); j++)
+      ins->addInput( result->values[ insts[i]->inputs[j]->ref ] );
+    for(int j=0; j<insts[i]->outputs.size(); j++)
+      ins->addOutput( result->values[ insts[i]->outputs[j]->ref ] );
+  }
+
+  // Patching of Instruction* within Value objects
+  for(int i=0; i<values.size(); i++)
+  {
+    if( values[i]->def != NULL )  // Input have no defining instruction
+      result->values[i]->def = result->insts[ values[i]->def->ref ];
+    for(int j=0; j<values[i]->uses.size(); j++)
+      result->values[i]->uses[j] = result->insts[ values[i]->uses[j]->ref ];
+  }
   return result;
 }
 

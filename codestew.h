@@ -37,6 +37,7 @@ public:
   Instruction(Block *owner, Opcode *opcode);
   void addInput( Value *inp);
   Value *addOutput( Type *type);
+  Value *addOutput( Value *val);
 };
 
 class Value
@@ -62,6 +63,7 @@ public:
   Instruction *instruction(Opcode *opcode);
   Value *input(Type *type);
   void output(Value *v);
+  Block *clone();
 
   bool isInput(Value *v);
   bool isOutput(Value *v);

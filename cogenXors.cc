@@ -1,5 +1,5 @@
 #include<stdio.h>
-#include "SimpleMachine.h"
+#include "arm.h"
 
 int main()
 {
@@ -25,4 +25,8 @@ int main()
   for(int i=0; i<order.size(); i++)
     printf("%llu\n",order[i]->ref);
   x86Output(&block);
+
+  ArmMachine arm;
+  Block *armBlock = arm.translate(&machine, &block);
+  armBlock->dot((char*)"armcrap.dot");
 }
