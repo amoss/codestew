@@ -2,6 +2,7 @@ DEBUG=
 all: cogenXors pycodestew.so
 clean:
 	rm -f *.o cogenXors pycodestew.so
+	rm -rf cogenXors.dSYM
 
 codestew.o: codestew.cc codestew.h Makefile
 	g++ ${DEBUG} -c codestew.cc 

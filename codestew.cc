@@ -117,6 +117,7 @@ Block *result = new Block();
   {
     Instruction *ins = new Instruction(result, insts[i]->opcode);
     result->insts.push_back(ins); 
+    ins->ref = i;
     // Refs = vector indices = easy mapping once new ptrs are stored in previous loop
     for(int j=0; j<insts[i]->inputs.size(); j++)
       ins->addInput( result->values[ insts[i]->inputs[j]->ref ] );
@@ -132,6 +133,11 @@ Block *result = new Block();
     for(int j=0; j<values[i]->uses.size(); j++)
       result->values[i]->uses[j] = result->insts[ values[i]->uses[j]->ref ];
   }
+
+  for(int i=0; i<inputs.size(); i++)
+    result->inputs.push_back(inputs[i]);
+  for(int i=0; i<outputs.size(); i++)
+    result->outputs.push_back(outputs[i]);
   return result;
 }
 
@@ -263,23 +269,7 @@ FILE *f = fopen(filename,"w");
   fclose(f);
 }
 
-bool trivial(Block *block, int numRegs, char const**regNames)
-{
-  if(block->numValues() > numRegs)
-    return false;
-std::vector<Instruction*> schedule = block->topSort();
-  for(int i=0; i<schedule.size(); i++)
-  {
-    printf("%s %s,%s,%s\n", schedule[i]->opcode->name, 
-           regNames[schedule[i]->inputs[0]->ref],
-           regNames[schedule[i]->inputs[1]->ref],
-           regNames[schedule[i]->outputs[0]->ref]);
-  }
-
-  return true;
-}
-
-char const *x86Names[] =
+/*char const *x86Names[] =
 {
   "rax", "rbx", "rcx", "rdx", "rdi", "rsi", 
   "r8",  "r9",  "r10", "r11", "r12",  "r13",
@@ -289,5 +279,5 @@ char const *x86Names[] =
 void x86Output(Block *block)
 {
   trivial(block, 14, x86Names);
-}
+}*/
 

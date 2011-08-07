@@ -24,9 +24,12 @@ int main()
   printf("%d\n",order.size());
   for(int i=0; i<order.size(); i++)
     printf("%llu\n",order[i]->ref);
-  x86Output(&block);
+  //x86Output(&block);
 
   ArmMachine arm;
   Block *armBlock = arm.translate(&machine, &block);
-  armBlock->dot((char*)"armcrap.dot");
+  d = armBlock->dump();
+  printf("%s",d.c_str());
+  armBlock->dot((char*)"craparm.dot");
+  arm.outCodeworks(armBlock);
 }
