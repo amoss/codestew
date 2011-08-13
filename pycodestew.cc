@@ -20,6 +20,24 @@ typedef struct {
     PyObject *size;
 } TypeObject;
 
+typedef struct {
+    PyObject_HEAD
+    Value *value;
+    PyObject *size;
+} ValueObject;
+
+struct _BlockObject;
+typedef struct {
+    PyObject_HEAD
+    Instruction *inst;
+    struct _BlockObject *owner;
+} InstructionObject;
+
+typedef struct {
+    PyObject_HEAD
+    SimpleMachine *machine;
+} SimpleMachineObject;
+
 static PyObject *Type_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
 {
     TypeObject *self;
@@ -28,6 +46,12 @@ static PyObject *Type_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
     }
     return (PyObject *)self;
 }
+
+typedef struct _BlockObject {
+    PyObject_HEAD
+    Block *block;
+    std::vector<InstructionObject*> cache;
+} BlockObject;
 
 static int Type_init(TypeObject *self, PyObject *args, PyObject *kwds)
 {
@@ -76,12 +100,6 @@ static PyGetSetDef Type_getseters[] = {
     {NULL}  /* Sentinel */
 };
 PYTYPE(Type)
-
-typedef struct {
-    PyObject_HEAD
-    Value *value;
-    PyObject *size;
-} ValueObject;
 
 static PyObject *Value_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
 {
@@ -137,23 +155,17 @@ static PyGetSetDef Value_getseters[] = {
 };
 PYTYPE(Value)
 
-typedef struct {
-    PyObject_HEAD
-    Instruction *inst;
-    PyObject *size;
-} InstructionObject;
-
 static PyObject *Instruction_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
 {
     InstructionObject *self;
     self = (InstructionObject *)type->tp_alloc(type, 0);
-    printf("InstNew\n");
+    printf("MAJOR PROBLEM, WHO IS OWNER??? InstNew\n");
     if (self != NULL) {
     }
     return (PyObject *)self;
 }
 
-static int Instruction_init(ValueObject *self, PyObject *args, PyObject *kwds)
+static int Instruction_init(InstructionObject *self, PyObject *args, PyObject *kwds)
 {
   char *kind;
   uint64 size;
@@ -161,7 +173,6 @@ static int Instruction_init(ValueObject *self, PyObject *args, PyObject *kwds)
 
   if(!PyArg_ParseTuple(args, "sk", &kind, &size))
     return -1;
-  self->size = PyInt_FromLong(size);
   return 0;
 }
 
@@ -171,16 +182,10 @@ std::string label = ((InstructionObject*)self)->inst->repr();
   return Py_BuildValue("s",label.c_str());
 }
 
-static void Instruction_dealloc(ValueObject* self)
+static void Instruction_dealloc(InstructionObject* self)
 {
-    self->ob_type->tp_free((PyObject*)self);
-}
-
-static PyObject *Instruction_getsize(ValueObject *self, void *closure)
-{
-  printf("Get Instruction.size\n");
-  Py_INCREF(self->size);
-  return self->size;
+  self->owner->cache[ self->inst->ref ] = NULL;
+  self->ob_type->tp_free((PyObject*)self);
 }
 
 static PyMemberDef Instruction_members[2] = {
@@ -195,15 +200,9 @@ static PyMethodDef Instruction_methods[] = {
 
 static PyGetSetDef Instruction_getseters[] = {
     //{"size", (getter)Instruction_getsize, (setter)Value_setsize, "Value size parameter", NULL},
-    {(char*)"size", (getter)Instruction_getsize, NULL, (char*)"Value size parameter", NULL},
     {NULL}  /* Sentinel */
 };
 PYTYPE(Instruction)
-
-typedef struct {
-    PyObject_HEAD
-    Block *block;
-} BlockObject;
 
 static PyObject *Block_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
 {
@@ -270,18 +269,27 @@ char *filename;
 
 static PyObject *blockTopSort(PyObject *self)
 {
-  Block *block = ((BlockObject*)self)->block;
+  BlockObject *blockObj = (BlockObject*)self;
+  Block *block = blockObj->block;
   printf("topSort\n");
 std::vector<Instruction *> order = block->topSort();
 PyObject *result = PyList_New(order.size());
   if(result==NULL)  return NULL;
+  // self must be the owner for all the insts generated in the topSort 
   for(int i=0; i<order.size(); i++)
   {
-    printf("List %d\n",i);
-    InstructionObject *inst = (InstructionObject*)_PyObject_New(&InstructionType);
-    Py_INCREF(inst);
-    inst->inst = order[i];
-    PyList_SET_ITEM(result, i, (PyObject*)inst);
+    if( blockObj->cache.size() < order[i]->ref+1 )
+      blockObj->cache.resize( order[i]->ref+1, NULL);
+    if(blockObj->cache[i]==NULL)
+    {
+      InstructionObject *inst = (InstructionObject*)_PyObject_New(&InstructionType);
+      Py_INCREF(inst);
+      inst->inst = order[i];
+      inst->owner = (BlockObject*)self;
+      blockObj->cache[ order[i]->ref ] = inst;
+    }
+    PyList_SET_ITEM(result, i, (PyObject*)blockObj->cache[i]);
+
   }
   return result;
 }
@@ -308,11 +316,6 @@ static PyGetSetDef Block_getseters[] = {
 };
 
 PYTYPE(Block)
-
-typedef struct {
-    PyObject_HEAD
-    SimpleMachine *machine;
-} SimpleMachineObject;
 
 static PyObject *SimpleMachine_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
 {
