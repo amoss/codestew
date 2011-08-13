@@ -9,4 +9,5 @@ t1    = mac.XOR( block, (in0,in1), word )
 t2    = mac.XOR( block, (in0,t1),  word )
 block.output(t2)
 print block.dump()
+block.dot("crap.dot")
 

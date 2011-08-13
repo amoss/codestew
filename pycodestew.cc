@@ -180,6 +180,16 @@ static PyObject *blockDump(PyObject *self)
   return Py_BuildValue("s",d.c_str());
 }
 
+static PyObject *blockDot(PyObject *self, PyObject *args)
+{
+char *filename;
+  if(!PyArg_ParseTuple(args, "s", &filename))
+    return NULL;
+  Block *block = ((BlockObject*)self)->block;
+  block->dot(filename);
+  Py_RETURN_NONE;
+}
+
 static void Block_dealloc(BlockObject* self)
 {
     self->ob_type->tp_free((PyObject*)self);
@@ -193,6 +203,7 @@ static PyMethodDef Block_methods[] = {
   {"input", (PyCFunction)blockInput, METH_VARARGS, "Create an input value in the block"},
   {"output", (PyCFunction)blockOutput, METH_VARARGS, "Mark a value as an output in the block"},
   {"dump", (PyCFunction)blockDump, METH_NOARGS, "Dump the VDG structure as text"},
+  {"dot", (PyCFunction)blockDot, METH_VARARGS, "Create a graphviz file"},
   {NULL}
 };
 static PyGetSetDef Block_getseters[] = {
