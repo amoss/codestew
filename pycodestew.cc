@@ -5,7 +5,7 @@
 #define PYTYPE(NAME) static PyTypeObject NAME##Type = { \
     PyObject_HEAD_INIT(NULL) 0, "pycodestew." #NAME,  \
     sizeof(NAME##Object), 0, (destructor)NAME##_dealloc, \
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, \
+    0, 0, 0, 0, NAME##_repr, 0, 0, 0, 0, 0, 0, 0, 0, 0, \
     Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE, \
     #NAME " objects", 0, 0, 0, 0, 0, 0, \
     NAME##_methods, NAME##_members,  \
@@ -42,6 +42,11 @@ static int Type_init(TypeObject *self, PyObject *args, PyObject *kwds)
     return -1;
   self->size = PyInt_FromLong(size);
   return 0;
+}
+
+static PyObject *Type_repr(PyObject *self)
+{
+  return Py_BuildValue("s","Type");
 }
 
 static void Type_dealloc(TypeObject* self)
@@ -98,6 +103,11 @@ static int Value_init(ValueObject *self, PyObject *args, PyObject *kwds)
   return 0;
 }
 
+static PyObject *Value_repr(PyObject *self)
+{
+  return Py_BuildValue("s","Value");
+}
+
 static void Value_dealloc(ValueObject* self)
 {
     self->ob_type->tp_free((PyObject*)self);
@@ -129,6 +139,69 @@ PYTYPE(Value)
 
 typedef struct {
     PyObject_HEAD
+    Instruction *inst;
+    PyObject *size;
+} InstructionObject;
+
+static PyObject *Instruction_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
+{
+    InstructionObject *self;
+    self = (InstructionObject *)type->tp_alloc(type, 0);
+    printf("InstNew\n");
+    if (self != NULL) {
+    }
+    return (PyObject *)self;
+}
+
+static int Instruction_init(ValueObject *self, PyObject *args, PyObject *kwds)
+{
+  char *kind;
+  uint64 size;
+  printf("InstInit\n");
+
+  if(!PyArg_ParseTuple(args, "sk", &kind, &size))
+    return -1;
+  self->size = PyInt_FromLong(size);
+  return 0;
+}
+
+static PyObject *Instruction_repr(PyObject *self)
+{
+std::string label = ((InstructionObject*)self)->inst->repr();
+  return Py_BuildValue("s",label.c_str());
+}
+
+static void Instruction_dealloc(ValueObject* self)
+{
+    self->ob_type->tp_free((PyObject*)self);
+}
+
+static PyObject *Instruction_getsize(ValueObject *self, void *closure)
+{
+  printf("Get Instruction.size\n");
+  Py_INCREF(self->size);
+  return self->size;
+}
+
+static PyMemberDef Instruction_members[2] = {
+  //{"size", T_INT, offsetof(InstructionObject, size), 0, "type size parameter"},
+    {NULL,0,0,0,NULL}  
+};
+
+static PyMethodDef Instruction_methods[] = {
+    //{"name", (PyCFunction)Noddy_name, METH_NOARGS, "Return the name, combining the first and last name" },
+    {NULL}
+};
+
+static PyGetSetDef Instruction_getseters[] = {
+    //{"size", (getter)Instruction_getsize, (setter)Value_setsize, "Value size parameter", NULL},
+    {(char*)"size", (getter)Instruction_getsize, NULL, (char*)"Value size parameter", NULL},
+    {NULL}  /* Sentinel */
+};
+PYTYPE(Instruction)
+
+typedef struct {
+    PyObject_HEAD
     Block *block;
 } BlockObject;
 
@@ -145,6 +218,11 @@ static int Block_init(BlockObject *self, PyObject *args, PyObject *kwds)
 {
   self->block = new Block();
     return 0;
+}
+
+static PyObject *Block_repr(PyObject *self)
+{
+  return Py_BuildValue("s","Block");
 }
 
 static PyObject *blockInput(PyObject *self, PyObject *args)
@@ -190,6 +268,24 @@ char *filename;
   Py_RETURN_NONE;
 }
 
+static PyObject *blockTopSort(PyObject *self)
+{
+  Block *block = ((BlockObject*)self)->block;
+  printf("topSort\n");
+std::vector<Instruction *> order = block->topSort();
+PyObject *result = PyList_New(order.size());
+  if(result==NULL)  return NULL;
+  for(int i=0; i<order.size(); i++)
+  {
+    printf("List %d\n",i);
+    InstructionObject *inst = (InstructionObject*)_PyObject_New(&InstructionType);
+    Py_INCREF(inst);
+    inst->inst = order[i];
+    PyList_SET_ITEM(result, i, (PyObject*)inst);
+  }
+  return result;
+}
+
 static void Block_dealloc(BlockObject* self)
 {
     self->ob_type->tp_free((PyObject*)self);
@@ -204,6 +300,7 @@ static PyMethodDef Block_methods[] = {
   {"output", (PyCFunction)blockOutput, METH_VARARGS, "Mark a value as an output in the block"},
   {"dump", (PyCFunction)blockDump, METH_NOARGS, "Dump the VDG structure as text"},
   {"dot", (PyCFunction)blockDot, METH_VARARGS, "Create a graphviz file"},
+  {"topSort", (PyCFunction)blockTopSort, METH_NOARGS, "Return a topological sort of the blok instructions"},
   {NULL}
 };
 static PyGetSetDef Block_getseters[] = {
@@ -230,6 +327,11 @@ static int SimpleMachine_init(SimpleMachineObject *self, PyObject *args, PyObjec
 {
   self->machine = new SimpleMachine();
     return 0;
+}
+
+static PyObject *SimpleMachine_repr(PyObject *self)
+{
+  return Py_BuildValue("s","");
 }
 
 static void SimpleMachine_dealloc(SimpleMachineObject* self)

@@ -38,6 +38,7 @@ public:
   void addInput( Value *inp);
   Value *addOutput( Type *type);
   Value *addOutput( Value *val);
+  std::string repr();
 };
 
 class Value

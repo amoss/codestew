@@ -57,6 +57,13 @@ Value *Instruction::addOutput( Value *val)
   return val;
 }
 
+std::string Instruction::repr()
+{
+char buffer[100];
+  sprintf(buffer,"<Inst %llu in=%zu out=%zu>",ref,inputs.size(),outputs.size());
+  return std::string(buffer);
+}
+
 Value::Value(Type *type)
 {
   this->type = type;
