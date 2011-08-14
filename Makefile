@@ -1,5 +1,5 @@
 DEBUG=
-all: cogens/xor pycodestew.so
+all: cogens/xor cogens/add128 pycodestew.so
 clean:
 	rm -f *.o cogens/xor pycodestew.so
 

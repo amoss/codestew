@@ -13,4 +13,5 @@ public:
   uint64 opcode(char *name);
   Type *ubits(int n);
   Value *XOR(Block *block, Value *in0, Value *in1);
+  Value *ADD(Block *block, Value *in0, Value *in1, Type *result);
 };
