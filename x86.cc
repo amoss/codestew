@@ -119,6 +119,51 @@ Projection *p = newValSplit(block,target);
   return p;
 }
 
-std::string X86Machine::outGccInline()
+static char const *regNames[] =
 {
+  "rax", "rbx", "rcx", "rdx", "rsi", "rdi",
+  "r8",  "r9",  "r10", "r11", "r12", "r13", "r14"
+};
+#define NUMREGS (sizeof(regNames)/sizeof(char const *))
+
+static bool opCoalesces(Opcode *op)
+{
+  return true;
+}
+
+std::string X86Machine::outGccInline(Projection *p)
+{
+std::string result;
+char line[120];
+std::vector< char const * > regAlloc;
+  for(int i=0; i<p->target->numValues(); i++)
+    regAlloc.push_back(NULL);
+  result += "__asm__ __volatile__(\"\\\n";
+  for(int i=0; i<p->target->numValues(); i++)
+  {
+    Value *v = p->target->getValue(i);
+    if(v->defined() && opCoalesces(v->def->opcode) )
+      regAlloc[i] = "implied";
+  }
+  int regsNeeded = 0;
+  for(int i=0; i<regAlloc.size(); i++)
+    if( regAlloc[i]==NULL )
+      regsNeeded++;
+  if(regsNeeded <= NUMREGS)
+  {
+    int regCounter=0;
+    for(int i=0; i<regAlloc.size(); i++)
+      if(regAlloc[i]==NULL)
+        regAlloc[i] = regNames[regCounter++];
+    for(int i=0; i<regAlloc.size(); i++)
+    {
+      sprintf(line, "// REGMAP %d : %s\\\n", i, regAlloc[i]);
+      result += line;
+    }
+  }
+  else {
+    result += "Trivial failed\n";
+  }
+  result += "\");\n";
+  return result;
 }
