@@ -87,8 +87,9 @@ public:
 class Projection
 {
 public:
-  Block *left, *right;
+  Block *source, *target;
   std::vector< std::vector<Value*> > mapping;
+  std::string dump();
 };
 
 class Machine

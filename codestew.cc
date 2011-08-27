@@ -291,3 +291,17 @@ void x86Output(Block *block)
   trivial(block, 14, x86Names);
 }*/
 
+std::string Projection::dump()
+{
+std::string res;
+char line[120];
+  for(int i=0; i<source->numValues(); i++)
+  {
+    sprintf(line, "Src %u -> Tar [", i);
+    for(int j=0; j<mapping[i].size(); j++)
+      sprintf(line+strlen(line), "%u ", mapping[i][j]->ref);
+    sprintf(line+strlen(line), "]\n");
+    res += line;
+  }
+  return res;
+}
