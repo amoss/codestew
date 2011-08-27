@@ -1,9 +1,13 @@
+#ifndef CODESTEW_H
+#define CODESTEW_H
 #include<vector>
 #include<string>
 #include<set>
 #include<iterator>
 #include<string.h>
+
 typedef unsigned long long uint64 ;
+typedef unsigned long uint32 ;
 
 class Type {
 public:
@@ -52,7 +56,6 @@ public:
   bool defined() { return def!=NULL; }
 };
 
-
 class Block
 {
   std::vector<Instruction*> insts;
@@ -69,12 +72,24 @@ public:
   bool isInput(Value *v);
   bool isOutput(Value *v);
   size_t numValues() { return values.size(); }
+  Value* getValue(int index) { return values[index]; }
   std::vector<Instruction*> topSort();
 
   std::string dump();
   void dot(char *filename);
 };
 
+/* Store a mapping between values in the left block and values in the right block.
+   This mapping may not be injective or surjective. Normally there will be a 
+   correspondence between input/output values stored in a Projection. One value
+   in the left block may be split into several values in the right.
+*/
+class Projection
+{
+public:
+  Block *left, *right;
+  std::vector< std::vector<Value*> > mapping;
+};
 
 class Machine
 {
@@ -82,3 +97,4 @@ class Machine
 };
 
 //void x86Output(Block *block);
+#endif

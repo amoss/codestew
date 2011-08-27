@@ -14,10 +14,12 @@ bool Type::equals(Type *other)
 
 std::string Type::repr()
 {
+char temp[80];
   switch( kind )
   {
     case Type::UBITS:
-      return std::string("Ubits");  
+      sprintf(temp,"Ubits<%u>",size);
+      return std::string(temp);  
     default:
       return std::string("UNKNOWN");
   }

@@ -1,3 +1,6 @@
+#ifndef SIMPLEMACHINE_H
+#define SIMPLEMACHINE_H
+
 #include "codestew.h"
 #include <string.h>
 
@@ -15,3 +18,4 @@ public:
   Value *XOR(Block *block, Value *in0, Value *in1);
   Value *ADD(Block *block, Value *in0, Value *in1, Type *result);
 };
+#endif

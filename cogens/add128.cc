@@ -1,5 +1,6 @@
 #include<stdio.h>
 #include "arm.h"
+#include "x86.h"
 
 int main()
 {
@@ -24,6 +25,10 @@ int main()
   printf("%d\n",order.size());
   for(int i=0; i<order.size(); i++)
     printf("%llu\n",order[i]->ref);
+  X86Machine x86;
+  Block *x86Block = x86.translate(&block);
+  printf("X86 translation:\n%s\n",x86Block->dump().c_str());
+  x86Block->dot("crapx86.dot");
   //x86Output(&block);
 
   ArmMachine arm;

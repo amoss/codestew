@@ -3,7 +3,7 @@
 class X86Machine
 {
 public:
-  void translate(X86Machine *source, Block *block);
+  Block *translate(Block *block);
   std::string outGccInline();
 };
 
