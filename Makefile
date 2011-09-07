@@ -1,7 +1,8 @@
 DEBUG=-g
-all: cogens/xor cogens/add128 pycodestew.so
+COGENS=cogens/xor cogens/add128
+all: ${COGENS} pycodestew.so
 clean:
-	rm -f *.o cogens/xor pycodestew.so
+	rm -f *.o ${COGENS} pycodestew.so
 
 codestew.o: codestew.cc codestew.h Makefile
 	g++ ${DEBUG} -c codestew.cc 

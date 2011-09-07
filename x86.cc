@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include "x86.h"
 
 
@@ -128,7 +129,8 @@ static char const *regNames[] =
 
 static bool opCoalesces(Opcode *op)
 {
-  return true;
+  return op==&opcodes[ADDCO]   || op==&opcodes[ADDZO] ||
+         op==&opcodes[ADDCICO] || op==&opcodes[ADDCIZO];
 }
 
 std::string X86Machine::outGccInline(Projection *p)
@@ -142,7 +144,7 @@ std::vector< char const * > regAlloc;
   for(int i=0; i<p->target->numValues(); i++)
   {
     Value *v = p->target->getValue(i);
-    if(v->defined() && opCoalesces(v->def->opcode) )
+    if(v->defined() && opCoalesces(v->def->opcode) && v==v->def->outputs[0])
       regAlloc[i] = "implied";
   }
   int regsNeeded = 0;
@@ -155,6 +157,18 @@ std::vector< char const * > regAlloc;
     for(int i=0; i<regAlloc.size(); i++)
       if(regAlloc[i]==NULL)
         regAlloc[i] = regNames[regCounter++];
+    for(int i=0; i<regAlloc.size(); i++)
+    {
+      if(!strcmp(regAlloc[i], "implied"))
+      {
+        printf("Coalescing %u\n",i);
+        Value *v = p->target->getValue(i);
+        Instruction *inst = v->def;
+        printf("From %u\n",inst->ref);
+        Value *overwritten = inst->inputs[1];
+        regAlloc[i] = regAlloc[overwritten->ref];
+      }
+    }
     for(int i=0; i<regAlloc.size(); i++)
     {
       sprintf(line, "// REGMAP %d : %s\\\n", i, regAlloc[i]);

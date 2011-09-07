@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include "arm.h"
 
 Block *ArmMachine::translate(SimpleMachine *source, Block *block)
