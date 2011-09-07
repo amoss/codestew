@@ -140,6 +140,14 @@ char line[120];
 std::vector< char const * > regAlloc;
   for(int i=0; i<p->target->numValues(); i++)
     regAlloc.push_back(NULL);
+  // Nail up fixed registers based on instruction types
+  for(int i=0; i<p->target->numInsts(); i++)
+  {
+    Instruction *inst = p->target->getInst(i);
+    if(inst->opcode == &opcodes[ADDCO]) {
+      regAlloc[ inst->outputs[1]->ref ] = "carry";
+    }
+  }
   result += "__asm__ __volatile__(\"\\\n";
   for(int i=0; i<p->target->numValues(); i++)
   {

@@ -73,6 +73,8 @@ public:
   bool isOutput(Value *v);
   size_t numValues() { return values.size(); }
   Value* getValue(int index) { return values[index]; }
+  size_t numInsts()  { return insts.size(); }
+  Instruction *getInst(int index) { return insts[index]; }
   std::vector<Instruction*> topSort();
 
   std::string dump();
