@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include "x86.h"
 
 
@@ -210,13 +211,20 @@ char line[120];
   for(int i=0; i<order.size(); i++)
   {
     if( order[i]->opcode == &opcodes[ADDCO] ) {
-      sprintf(line,"  addq %s, %s;\n", alloc->regs[ order[i]->inputs[0]->ref ], 
+      sprintf(line,"  addq %%%s, %%%s;\n", alloc->regs[ order[i]->inputs[0]->ref ], 
                                        alloc->regs[ order[i]->inputs[1]->ref ]);
       result += line;
     }
     else if( order[i]->opcode == &opcodes[ADDCICO] ) {
-      sprintf(line,"  adcq %s, %s;\n", alloc->regs[ order[i]->inputs[0]->ref ], 
+      sprintf(line,"  adcq %%%s, %%%s;\n", alloc->regs[ order[i]->inputs[0]->ref ], 
                                        alloc->regs[ order[i]->inputs[1]->ref ]);
+      result += line;
+    }
+    else if( order[i]->opcode == &opcodes[SIGNEXT] &&
+             !strcmp("carry",alloc->regs[order[i]->inputs[0]->ref]) ) {
+      const char *regName = alloc->regs[ order[i]->outputs[0]->ref ];
+      sprintf(line,"  xorq %%%s, %%%s;\n  adc #0, %%%s\n",
+                   regName, regName, regName);
       result += line;
     }
     else {
