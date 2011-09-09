@@ -55,12 +55,20 @@ Projection *p = new Projection();
       p->mapping.push_back( intervals );
     }
   }
+  // Register the words making up each input as inputs to the new block.
+  for(int i=0; i<source->numInputs(); i++)
+  {
+    Value *v = source->getInput(i);
+    std::vector<Value*> inpWords = p->mapping[ v->ref ];
+    for(int j=0; j<inpWords.size(); j++)
+      target->input( inpWords[j] );
+  }
   return p;
 }
 
 Projection *X86Machine::translate(Block *block)
 {
-Block *target = new Block;
+Block *target = new Block;      // TODO: Strange interface, could alloc inside next...
 Projection *p = newValSplit(block,target);
 
   std::vector<Instruction*> order = block->topSort();
@@ -133,58 +141,89 @@ static bool opCoalesces(Opcode *op)
          op==&opcodes[ADDCICO] || op==&opcodes[ADDCIZO];
 }
 
-std::string X86Machine::outGccInline(Projection *p)
+Allocation *X86Machine::allocate(Block *block)
 {
-std::string result;
-char line[120];
-std::vector< char const * > regAlloc;
-  for(int i=0; i<p->target->numValues(); i++)
-    regAlloc.push_back(NULL);
+Allocation *regAlloc = new Allocation(block);
+  // Presize / initial state is NULL 
+  for(int i=0; i<block->numValues(); i++)
+    regAlloc->regs.push_back(NULL);
+
   // Nail up fixed registers based on instruction types
-  for(int i=0; i<p->target->numInsts(); i++)
+  for(int i=0; i<block->numInsts(); i++)
   {
-    Instruction *inst = p->target->getInst(i);
-    if(inst->opcode == &opcodes[ADDCO]) {
-      regAlloc[ inst->outputs[1]->ref ] = "carry";
+    Instruction *inst = block->getInst(i);
+    if(inst->opcode == &opcodes[ADDCO] || inst->opcode == &opcodes[ADDCICO]) {
+      regAlloc->regs[ inst->outputs[1]->ref ] = "carry";
     }
   }
-  result += "__asm__ __volatile__(\"\\\n";
-  for(int i=0; i<p->target->numValues(); i++)
+
+  // Check for coalesced regs first as reduces reg-pressure
+  for(int i=0; i<block->numValues(); i++)
   {
-    Value *v = p->target->getValue(i);
+    Value *v = block->getValue(i);
     if(v->defined() && opCoalesces(v->def->opcode) && v==v->def->outputs[0])
-      regAlloc[i] = "implied";
+      regAlloc->regs[i] = "implied";
   }
+
+  // Check if value set is small enough for trivial allocation
   int regsNeeded = 0;
-  for(int i=0; i<regAlloc.size(); i++)
-    if( regAlloc[i]==NULL )
+  for(int i=0; i<regAlloc->regs.size(); i++)
+    if( regAlloc->regs[i]==NULL )
       regsNeeded++;
   if(regsNeeded <= NUMREGS)
   {
     int regCounter=0;
-    for(int i=0; i<regAlloc.size(); i++)
-      if(regAlloc[i]==NULL)
-        regAlloc[i] = regNames[regCounter++];
-    for(int i=0; i<regAlloc.size(); i++)
+    for(int i=0; i<regAlloc->regs.size(); i++)
+      if(regAlloc->regs[i]==NULL)
+        regAlloc->regs[i] = regNames[regCounter++];
+    for(int i=0; i<regAlloc->regs.size(); i++)
     {
-      if(!strcmp(regAlloc[i], "implied"))
+      if(!strcmp(regAlloc->regs[i], "implied"))
       {
         printf("Coalescing %u\n",i);
-        Value *v = p->target->getValue(i);
+        Value *v = block->getValue(i);
         Instruction *inst = v->def;
         printf("From %u\n",inst->ref);
         Value *overwritten = inst->inputs[1];
-        regAlloc[i] = regAlloc[overwritten->ref];
+        regAlloc->regs[i] = regAlloc->regs[overwritten->ref];
       }
     }
-    for(int i=0; i<regAlloc.size(); i++)
-    {
-      sprintf(line, "// REGMAP %d : %s\\\n", i, regAlloc[i]);
+    return regAlloc;
+  }
+  printf("Trivial failed\n");
+  exit(-1);
+  return NULL;
+}
+
+std::string X86Machine::outGccInline(Allocation *alloc)
+{
+std::string result;
+char line[120];
+  result += "__asm__ __volatile__(\"\\\n";
+  for(int i=0; i<alloc->regs.size(); i++)
+  {
+    sprintf(line, "// REGMAP %d : %s\\\n", i, alloc->regs[i]);
+    result += line;
+  }
+  std::vector<Instruction*> order = alloc->topSort();
+  printf("SIZE %u\n",order.size());
+  for(int i=0; i<order.size(); i++)
+  {
+    if( order[i]->opcode == &opcodes[ADDCO] ) {
+      sprintf(line,"  addq %s, %s;\n", alloc->regs[ order[i]->inputs[0]->ref ], 
+                                       alloc->regs[ order[i]->inputs[1]->ref ]);
       result += line;
     }
-  }
-  else {
-    result += "Trivial failed\n";
+    else if( order[i]->opcode == &opcodes[ADDCICO] ) {
+      sprintf(line,"  adcq %s, %s;\n", alloc->regs[ order[i]->inputs[0]->ref ], 
+                                       alloc->regs[ order[i]->inputs[1]->ref ]);
+      result += line;
+    }
+    else {
+      sprintf(line,"OTHER %s\n",order[i]->opcode->name);
+      result += line;
+    }
+    
   }
   result += "\");\n";
   return result;

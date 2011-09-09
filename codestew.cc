@@ -79,6 +79,11 @@ Value *result = value(type);
   return result;
 }
 
+void Block::input(Value *v)
+{
+  inputs.push_back(v->ref);
+}
+
 void Block::output(Value *v)
 {
   outputs.push_back(v->ref);
@@ -112,6 +117,12 @@ Instruction *result = new Instruction(this,opcode);
 Block *Block::clone()
 {
 Block *result = new Block();
+  copyInto(result);
+  return result;
+}
+
+void Block::copyInto(Block *result)
+{
   // Uses and def ptrs will be mapped in another pass.
   // Shallow sharing of types, assumes a small external set
   for(int i=0; i<values.size(); i++)
@@ -147,7 +158,6 @@ Block *result = new Block();
     result->inputs.push_back(inputs[i]);
   for(int i=0; i<outputs.size(); i++)
     result->outputs.push_back(outputs[i]);
-  return result;
 }
 
 bool Block::isInput(Value *v)
@@ -178,6 +188,7 @@ std::vector<Instruction*> Block::topSort()
 std::vector<Instruction*> order;
 std::set<uint64> ready;
 std::set<Instruction*> done;
+  printf("TOPSORT %u %u\n", insts.size(), values.size());
   std::copy(inputs.begin(), inputs.end(), inserter(ready,ready.begin()) );
   while(order.size() < insts.size())
   {
@@ -208,7 +219,10 @@ std::set<Instruction*> done;
     }
     //printf("Enabled %d\n",enabled.size());
     if(enabled.size()==0)           // Graph is blocked (disjoint or cyclic), abort
+    {
+      printf("Graph is blocked: disjoint or cyclic\n");
       return order;
+    }
     for(std::set<Instruction*>::iterator i=enabled.begin(); i!=enabled.end(); i++)
     {
       order.push_back(*i);
@@ -217,6 +231,7 @@ std::set<Instruction*> done;
         ready.insert((*i)->outputs[j]->ref);
     }
   }
+  printf("ORDER %k\n",order.size());
   return order;
 }
 
@@ -304,4 +319,33 @@ char line[120];
     res += line;
   }
   return res;
+}
+
+Allocation::Allocation(Block *orig)
+{
+  orig->copyInto(this);
+}
+
+void Allocation::dot(char *filename)
+{
+FILE *f = fopen(filename,"w");
+  printf("Output to %s\n", filename);
+  if(f==NULL)
+    throw "Cannot open output file";
+  fprintf(f,"digraph{\n");
+  for(int i=0; i<values.size(); i++)
+  {
+    fprintf(f,"v%d [label=\"%s : %d : %s\"];\n", i, regs[i], i, values[i]->type->repr().c_str());
+  }
+  for(int i=0; i<insts.size(); i++)
+  {
+    Instruction *inst = insts[i];
+    fprintf(f,"i%d [shape=none,label=\"%s\"];\n", i, inst->opcode->name);
+    for(int j=0; j<inst->inputs.size(); j++)
+      fprintf(f,"v%llu -> i%d;\n", inst->inputs[j]->ref, i);
+    for(int j=0; j<inst->outputs.size(); j++)
+      fprintf(f,"i%d -> v%llu;\n", i, inst->outputs[j]->ref);
+  }
+  fprintf(f,"}");
+  fclose(f);
 }

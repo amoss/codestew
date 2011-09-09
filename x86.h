@@ -4,7 +4,8 @@ class X86Machine
 {
 public:
   Projection *translate(Block *block);
-  std::string outGccInline(Projection *p);
+  Allocation *allocate(Block *block);
+  std::string outGccInline(Allocation *p);
 };
 
 

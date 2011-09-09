@@ -58,6 +58,7 @@ public:
 
 class Block
 {
+protected:
   std::vector<Instruction*> insts;
   std::vector<Value*> values;
   std::vector<uint64> inputs, outputs;
@@ -66,11 +67,16 @@ public:
   Value *value(Type *type);
   Instruction *instruction(Opcode *opcode);
   Value *input(Type *type);
+  void input(Value *v);
   void output(Value *v);
+
   Block *clone();
+  void copyInto(Block *result);
 
   bool isInput(Value *v);
   bool isOutput(Value *v);
+  size_t numInputs() { return inputs.size(); }
+  Value* getInput(int index) { return values[inputs[index]]; }
   size_t numValues() { return values.size(); }
   Value* getValue(int index) { return values[index]; }
   size_t numInsts()  { return insts.size(); }
@@ -92,6 +98,15 @@ public:
   Block *source, *target;
   std::vector< std::vector<Value*> > mapping;
   std::string dump();
+};
+
+class Allocation : public Block
+{
+public:
+std::vector< char const * > regs;
+  Allocation(Block *orig);
+  void dot(char *filename);
+
 };
 
 class Machine

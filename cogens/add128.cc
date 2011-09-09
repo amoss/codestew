@@ -30,7 +30,9 @@ int main()
   printf("X86 translation:\n%s\nX86 block:\n%s\n",x86Proj->dump().c_str(),
                                                   x86Proj->target->dump().c_str());
   x86Proj->target->dot("crapx86.dot");
-  std::string x86Code = x86.outGccInline(x86Proj);
+  Allocation *x86Regs = x86.allocate(x86Proj->target);
+  x86Regs->dot("crapx86regs.dot");
+  std::string x86Code = x86.outGccInline(x86Regs);
   printf("Code:\n%s\n", x86Code.c_str());
 
   ArmMachine arm;
