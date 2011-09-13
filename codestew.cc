@@ -18,7 +18,7 @@ char temp[80];
   switch( kind )
   {
     case Type::UBITS:
-      sprintf(temp,"Ubits<%u>",size);
+      sprintf(temp,"Ubits<%llu>",size);
       return std::string(temp);  
     default:
       return std::string("UNKNOWN");
@@ -188,7 +188,7 @@ std::vector<Instruction*> Block::topSort()
 std::vector<Instruction*> order;
 std::set<uint64> ready;
 std::set<Instruction*> done;
-  printf("TOPSORT %u %u\n", insts.size(), values.size());
+  printf("TOPSORT %zu %zu\n", insts.size(), values.size());
   std::copy(inputs.begin(), inputs.end(), inserter(ready,ready.begin()) );
   while(order.size() < insts.size())
   {
@@ -231,7 +231,7 @@ std::set<Instruction*> done;
         ready.insert((*i)->outputs[j]->ref);
     }
   }
-  printf("ORDER %k\n",order.size());
+  printf("ORDER %zu\n",order.size());
   return order;
 }
 
@@ -270,7 +270,7 @@ char line[180];
   return result;
 }
 
-void Block::dot(char *filename)
+void Block::dot(const char *filename)
 {
 FILE *f = fopen(filename,"w");
   printf("Output to %s\n", filename);
@@ -314,7 +314,7 @@ char line[120];
   {
     sprintf(line, "Src %u -> Tar [", i);
     for(int j=0; j<mapping[i].size(); j++)
-      sprintf(line+strlen(line), "%u ", mapping[i][j]->ref);
+      sprintf(line+strlen(line), "%llu ", mapping[i][j]->ref);
     sprintf(line+strlen(line), "]\n");
     res += line;
   }
@@ -326,7 +326,7 @@ Allocation::Allocation(Block *orig)
   orig->copyInto(this);
 }
 
-void Allocation::dot(char *filename)
+void Allocation::dot(const char *filename)
 {
 FILE *f = fopen(filename,"w");
   printf("Output to %s\n", filename);

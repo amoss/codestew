@@ -73,7 +73,7 @@ Block *target = new Block;      // TODO: Strange interface, could alloc inside n
 Projection *p = newValSplit(block,target);
 
   std::vector<Instruction*> order = block->topSort();
-  printf("Trans: %d insts\n",order.size());
+  printf("Trans: %zu insts\n",order.size());
   for(int i=0; i<order.size(); i++)
   {
     Instruction *inst = order[i];
@@ -184,7 +184,7 @@ Allocation *regAlloc = new Allocation(block);
         printf("Coalescing %u\n",i);
         Value *v = block->getValue(i);
         Instruction *inst = v->def;
-        printf("From %u\n",inst->ref);
+        printf("From %llu\n",inst->ref);
         Value *overwritten = inst->inputs[1];
         regAlloc->regs[i] = regAlloc->regs[overwritten->ref];
       }
@@ -207,7 +207,7 @@ char line[120];
     result += line;
   }
   std::vector<Instruction*> order = alloc->topSort();
-  printf("SIZE %u\n",order.size());
+  printf("SIZE %zu\n",order.size());
   for(int i=0; i<order.size(); i++)
   {
     if( order[i]->opcode == &opcodes[ADDCO] ) {

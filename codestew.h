@@ -84,7 +84,7 @@ public:
   std::vector<Instruction*> topSort();
 
   std::string dump();
-  void dot(char *filename);
+  void dot(const char *filename);
 };
 
 /* Store a mapping between values in the left block and values in the right block.
@@ -105,7 +105,7 @@ class Allocation : public Block
 public:
 std::vector< char const * > regs;
   Allocation(Block *orig);
-  void dot(char *filename);
+  void dot(const char *filename);
 
 };
 
