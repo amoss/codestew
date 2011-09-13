@@ -77,6 +77,8 @@ public:
   bool isOutput(Value *v);
   size_t numInputs() { return inputs.size(); }
   Value* getInput(int index) { return values[inputs[index]]; }
+  size_t numOutputs() { return outputs.size(); }
+  Value* getOutput(int index) { return values[outputs[index]]; }
   size_t numValues() { return values.size(); }
   Value* getValue(int index) { return values[index]; }
   size_t numInsts()  { return insts.size(); }

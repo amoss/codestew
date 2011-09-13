@@ -31,7 +31,7 @@ int main(int argc, char **argv)
   }
   std::string d = block.dump();
   printf("%s",d.c_str());
-  block.dot((char*)"crap.dot");
+  block.dot((char*)"testcases/add128orig.dot");
   std::vector<Instruction*> order = block.topSort();
   printf("%zu\n",order.size());
   for(int i=0; i<order.size(); i++)

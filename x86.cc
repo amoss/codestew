@@ -64,6 +64,14 @@ Projection *p = new Projection();
     for(int j=0; j<inpWords.size(); j++)
       target->input( inpWords[j] );
   }
+  // Ditto for outputs
+  for(int i=0; i<source->numOutputs(); i++)
+  {
+    Value *v = source->getOutput(i);
+    std::vector<Value*> opWords = p->mapping[ v->ref ];
+    for(int j=0; j<opWords.size(); j++)
+      target->output( opWords[j] );
+  }
   return p;
 }
 
