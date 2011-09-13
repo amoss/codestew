@@ -27,7 +27,7 @@ int main()
   //x86Output(&block);
 
   ArmMachine arm;
-  Block *armBlock = arm.translate(&machine, &block);
+  Block *armBlock = arm.translate(&block)->target;
   d = armBlock->dump();
   printf("%s",d.c_str());
   armBlock->dot((char*)"craparm.dot");

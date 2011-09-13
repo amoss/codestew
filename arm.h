@@ -3,7 +3,7 @@
 class ArmMachine
 {
 public:
-  Block *translate(SimpleMachine *source, Block *block);
+  Projection *translate(Block *block);
   std::string outCodeworks(Block *block);
 };
 
