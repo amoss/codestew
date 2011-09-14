@@ -283,9 +283,9 @@ FILE *f = fopen(filename,"w");
     fprintf(f,"v%d [label=\"%d : %s\"];\n", i, i, values[i]->type->repr().c_str());
   }
   for(int i=0; i<inputs.size(); i++)
-    fprintf(f,"input -> v%d [color=grey];\n", inputs[i]);
+    fprintf(f,"input -> v%llu [color=grey];\n", inputs[i]);
   for(int i=0; i<outputs.size(); i++)
-    fprintf(f,"v%d -> output [color=grey];\n", outputs[i]);
+    fprintf(f,"v%llu -> output [color=grey];\n", outputs[i]);
   for(int i=0; i<insts.size(); i++)
   {
     Instruction *inst = insts[i];
@@ -338,10 +338,15 @@ FILE *f = fopen(filename,"w");
   if(f==NULL)
     throw "Cannot open output file";
   fprintf(f,"digraph{\n");
+  fprintf(f,"input [shape=none];\noutput [shape=none];\n");
   for(int i=0; i<values.size(); i++)
   {
     fprintf(f,"v%d [label=\"%s : %d : %s\"];\n", i, regs[i], i, values[i]->type->repr().c_str());
   }
+  for(int i=0; i<inputs.size(); i++)
+    fprintf(f,"input -> v%llu [color=grey];\n", inputs[i]);
+  for(int i=0; i<outputs.size(); i++)
+    fprintf(f,"v%llu -> output [color=grey];\n", outputs[i]);
   for(int i=0; i<insts.size(); i++)
   {
     Instruction *inst = insts[i];

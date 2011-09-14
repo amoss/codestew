@@ -45,7 +45,7 @@ int main(int argc, char **argv)
                                                     x86Proj->target->dump().c_str());
     x86Proj->target->dot("testcases/add128x86.dot");
     Allocation *x86Regs = x86.allocate(x86Proj->target);
-    x86Regs->dot("crapx86regs.dot");
+    x86Regs->dot("testcases/add128x86regs.dot");
     std::string x86Code = x86.outGccInline(x86Regs);
     printf("Code:\n%s\n", x86Code.c_str());
   }
