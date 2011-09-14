@@ -1,3 +1,4 @@
 #include "codestew.h"
 
-Projection* newValSplit(Block *source, Block *target, int W);
+Projection* newValSplit(Block *source, int W);
+void translateUbitAdd(Instruction *inst, Projection *p);

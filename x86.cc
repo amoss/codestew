@@ -34,8 +34,7 @@ static Type  *Flag   = new Type(Type::UBITS,1);
 
 Projection *X86Machine::translate(Block *block)
 {
-Block *target = new Block;      // TODO: Strange interface, could alloc inside next...
-Projection *p = newValSplit(block,target,W);
+Projection *p = newValSplit(block,W);
 
   std::vector<Instruction*> order = block->topSort();
   printf("Trans: %zu insts\n",order.size());
@@ -43,52 +42,10 @@ Projection *p = newValSplit(block,target,W);
   {
     Instruction *inst = order[i];
     if(!strcmp(inst->opcode->name, "add"))
-    {
-      printf("Trans: ADD\n");
-      std::vector<Value*> leftVals  = p->mapping[ inst->inputs[0]->ref ];
-      std::vector<Value*> rightVals = p->mapping[ inst->inputs[1]->ref ];
-      std::vector<Value*> targetVals = p->mapping[ inst->outputs[0]->ref ];
-
-      // Build ADDCO from leftVals[i],rightVals[i] to targetVals[i]
-      Instruction *newI = target->instruction(&opcodes[ADDCO]);
-      newI->addInput(leftVals[0]);
-      newI->addInput(rightVals[0]);
-      newI->addOutput(targetVals[0]);
-      Value *carry = newI->addOutput(Flag);
-
-      for(int i=1; i<leftVals.size()-1; i++)
-      {
-        // Build ADDCICO from leftVals[i],rightVals[i] to targetVals[i]
-        newI = target->instruction(&opcodes[ADDCICO]);
-        newI->addInput(leftVals[i]);
-        newI->addInput(rightVals[i]);
-        newI->addInput(carry);
-        newI->addOutput(targetVals[i]);
-        carry = newI->addOutput(Flag);
-      }
-      // Decide how to handle the final carry flag
-      if( targetVals.size() == leftVals.size() )
-      {
-        // Drop the final carry (no extra word to spill into)
-        newI = target->instruction(&opcodes[ADDCIZO]);
-        newI->addInput(leftVals[leftVals.size()-1]);
-        newI->addInput(rightVals[rightVals.size()-1]);
-        newI->addInput(carry);
-        newI->addOutput(targetVals[targetVals.size()-1]);
-      }
-      else
-      {
-        // Spill the final carry into an extra word.
-        newI = target->instruction(&opcodes[ADDCICO]);
-        newI->addInput(leftVals[leftVals.size()-1]);
-        newI->addInput(rightVals[rightVals.size()-1]);
-        newI->addInput(carry);
-        newI->addOutput(targetVals[targetVals.size()-2]);
-        carry = newI->addOutput(Flag);
-        newI = target->instruction(&opcodes[SIGNEXT]);
-        newI->addInput(carry);
-        newI->addOutput(targetVals[targetVals.size()-1]);
-      }
+      translateUbitAdd(inst, p);
+    else {
+      printf("ERROR: Cannot translate\n");
+      exit(-1);
     }
   }
   return p;

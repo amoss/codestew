@@ -1,14 +1,15 @@
+#include <stdio.h>
 #include "addProj.h"
 
 /* Prepare a block for projection onto a lower-level machine. Split every
    Ubits<n> where n>W for some register size W into a set of W-bit words.
 */
-Projection* newValSplit(Block *source, Block *target, int W)
+Projection* newValSplit(Block *source, int W)
 {
 Projection *p = new Projection();
 Type  *Word   = new Type(Type::UBITS,W);
   p->source  = source;
-  p->target  = target;
+  p->target  = new Block;
   for(int i=0; i<source->numValues(); i++)
   {
     Value *v = source->getValue(i);
@@ -25,7 +26,7 @@ Type  *Word   = new Type(Type::UBITS,W);
     else
     {
       std::vector<Value*> intervals;
-      intervals.push_back( target->value(v->type) );
+      intervals.push_back( p->target->value(v->type) );
       p->mapping.push_back( intervals );
     }
   }
@@ -35,7 +36,7 @@ Type  *Word   = new Type(Type::UBITS,W);
     Value *v = source->getInput(i);
     std::vector<Value*> inpWords = p->mapping[ v->ref ];
     for(int j=0; j<inpWords.size(); j++)
-      target->input( inpWords[j] );
+      p->target->input( inpWords[j] );
   }
   // Ditto for outputs
   for(int i=0; i<source->numOutputs(); i++)
@@ -43,7 +44,60 @@ Type  *Word   = new Type(Type::UBITS,W);
     Value *v = source->getOutput(i);
     std::vector<Value*> opWords = p->mapping[ v->ref ];
     for(int j=0; j<opWords.size(); j++)
-      target->output( opWords[j] );
+      p->target->output( opWords[j] );
   }
   return p;
+}
+
+/* Translate an addition over Ubits<n> to a series of additions over the W-bit
+   words stored in the Projection.
+*/
+void translateUbitAdd(Instruction *inst, Projection *p)
+{
+Type  *Flag   = new Type(Type::UBITS,1);
+  printf("Trans: ADD\n");
+  std::vector<Value*> leftVals  = p->mapping[ inst->inputs[0]->ref ];
+  std::vector<Value*> rightVals = p->mapping[ inst->inputs[1]->ref ];
+  std::vector<Value*> targetVals = p->mapping[ inst->outputs[0]->ref ];
+
+  // Build ADDCO from leftVals[i],rightVals[i] to targetVals[i]
+  Instruction *newI = p->target->instruction(&opcodes[ADDCO]);
+  newI->addInput(leftVals[0]);
+  newI->addInput(rightVals[0]);
+  newI->addOutput(targetVals[0]);
+  Value *carry = newI->addOutput(Flag);
+
+  for(int i=1; i<leftVals.size()-1; i++)
+  {
+    // Build ADDCICO from leftVals[i],rightVals[i] to targetVals[i]
+    newI = p->target->instruction(&opcodes[ADDCICO]);
+    newI->addInput(leftVals[i]);
+    newI->addInput(rightVals[i]);
+    newI->addInput(carry);
+    newI->addOutput(targetVals[i]);
+    carry = newI->addOutput(Flag);
+  }
+  // Decide how to handle the final carry flag
+  if( targetVals.size() == leftVals.size() )
+  {
+    // Drop the final carry (no extra word to spill into)
+    newI = p->target->instruction(&opcodes[ADDCIZO]);
+    newI->addInput(leftVals[leftVals.size()-1]);
+    newI->addInput(rightVals[rightVals.size()-1]);
+    newI->addInput(carry);
+    newI->addOutput(targetVals[targetVals.size()-1]);
+  }
+  else
+  {
+    // Spill the final carry into an extra word.
+    newI = p->target->instruction(&opcodes[ADDCICO]);
+    newI->addInput(leftVals[leftVals.size()-1]);
+    newI->addInput(rightVals[rightVals.size()-1]);
+    newI->addInput(carry);
+    newI->addOutput(targetVals[targetVals.size()-2]);
+    carry = newI->addOutput(Flag);
+    newI = p->target->instruction(&opcodes[SIGNEXT]);
+    newI->addInput(carry);
+    newI->addOutput(targetVals[targetVals.size()-1]);
+  }
 }
