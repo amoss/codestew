@@ -359,3 +359,21 @@ FILE *f = fopen(filename,"w");
   fprintf(f,"}");
   fclose(f);
 }
+
+static Opcode genericOps[] =
+{
+  Opcode("addco",2,2),  // Add with carry out :           Word,Word -> Word, Bit
+  Opcode("addzo",2,1),  // Add with zero out :            Word,Word -> Word
+  Opcode("addcico",3,2),// Add with carry in, carry out : Word,Word,Bit -> Word, Bit
+  Opcode("addcizo",3,1),// Add with carry in, zero out  : Word,Word,Bit -> Word
+  Opcode("signext",1,1),// Extend the input type onto the output type
+  Opcode(NULL,-1,-1)
+};
+
+Opcode *Machine::lookup(const char *name)
+{
+  for(int i=0; genericOps[i].name!=NULL; i++)
+    if(!strcmp(name,genericOps[i].name) )
+      return &genericOps[i];
+  return NULL;
+}

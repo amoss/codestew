@@ -42,7 +42,7 @@ Projection *p = newValSplit(block,W);
   {
     Instruction *inst = order[i];
     if(!strcmp(inst->opcode->name, "add"))
-      translateUbitAdd(inst, p);
+      translateUbitAdd(inst, p, (Machine*)this);
     else {
       printf("ERROR: Cannot translate\n");
       exit(-1);

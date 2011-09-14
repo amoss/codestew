@@ -113,7 +113,8 @@ std::vector< char const * > regs;
 
 class Machine
 {
-  
+public:
+  Opcode *lookup(const char *name);  
 };
 
 //void x86Output(Block *block);

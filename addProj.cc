@@ -52,7 +52,7 @@ Type  *Word   = new Type(Type::UBITS,W);
 /* Translate an addition over Ubits<n> to a series of additions over the W-bit
    words stored in the Projection.
 */
-void translateUbitAdd(Instruction *inst, Projection *p)
+void translateUbitAdd(Instruction *inst, Projection *p, Machine *m)
 {
 Type  *Flag   = new Type(Type::UBITS,1);
   printf("Trans: ADD\n");
@@ -61,7 +61,7 @@ Type  *Flag   = new Type(Type::UBITS,1);
   std::vector<Value*> targetVals = p->mapping[ inst->outputs[0]->ref ];
 
   // Build ADDCO from leftVals[i],rightVals[i] to targetVals[i]
-  Instruction *newI = p->target->instruction(&opcodes[ADDCO]);
+  Instruction *newI = p->target->instruction(m->lookup("addco"));
   newI->addInput(leftVals[0]);
   newI->addInput(rightVals[0]);
   newI->addOutput(targetVals[0]);
@@ -70,7 +70,7 @@ Type  *Flag   = new Type(Type::UBITS,1);
   for(int i=1; i<leftVals.size()-1; i++)
   {
     // Build ADDCICO from leftVals[i],rightVals[i] to targetVals[i]
-    newI = p->target->instruction(&opcodes[ADDCICO]);
+    newI = p->target->instruction(m->lookup("addcico"));
     newI->addInput(leftVals[i]);
     newI->addInput(rightVals[i]);
     newI->addInput(carry);
@@ -81,7 +81,7 @@ Type  *Flag   = new Type(Type::UBITS,1);
   if( targetVals.size() == leftVals.size() )
   {
     // Drop the final carry (no extra word to spill into)
-    newI = p->target->instruction(&opcodes[ADDCIZO]);
+    newI = p->target->instruction(m->lookup("addcizo"));
     newI->addInput(leftVals[leftVals.size()-1]);
     newI->addInput(rightVals[rightVals.size()-1]);
     newI->addInput(carry);
@@ -90,13 +90,13 @@ Type  *Flag   = new Type(Type::UBITS,1);
   else
   {
     // Spill the final carry into an extra word.
-    newI = p->target->instruction(&opcodes[ADDCICO]);
+    newI = p->target->instruction(m->lookup("addcico"));
     newI->addInput(leftVals[leftVals.size()-1]);
     newI->addInput(rightVals[rightVals.size()-1]);
     newI->addInput(carry);
     newI->addOutput(targetVals[targetVals.size()-2]);
     carry = newI->addOutput(Flag);
-    newI = p->target->instruction(&opcodes[SIGNEXT]);
+    newI = p->target->instruction(m->lookup("signext"));
     newI->addInput(carry);
     newI->addOutput(targetVals[targetVals.size()-1]);
   }
