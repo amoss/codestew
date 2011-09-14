@@ -12,9 +12,11 @@ arm.o: arm.cc arm.h Makefile
 	g++ ${DEBUG} -c arm.cc 
 x86.o: x86.cc x86.h Makefile
 	g++ ${DEBUG} -c x86.cc 
+addProj.o: addProj.cc addProj.h Makefile
+	g++ ${DEBUG} -c addProj.cc 
 
-cogens/%: cogens/%.cc codestew.o SimpleMachine.o arm.o x86.o
-	g++ ${DEBUG} -I. $< SimpleMachine.o codestew.o arm.o x86.o -o $@
+cogens/%: cogens/%.cc codestew.o SimpleMachine.o arm.o x86.o addProj.o
+	g++ ${DEBUG} -I. $< SimpleMachine.o codestew.o arm.o x86.o addProj.o -o $@
 
 pycodestew.so: pycodestew.cc codestew.cc codestew.h SimpleMachine.h SimpleMachine.cc
 	g++ -fPIC -I/usr/include/python2.6 -shared pycodestew.cc codestew.cc SimpleMachine.cc -o pycodestew.so -lpython2.6

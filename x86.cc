@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "x86.h"
+#include "addProj.h"
 
 
 
@@ -31,54 +32,10 @@ static Opcode opcodes[] =
 static Type  *Word   = new Type(Type::UBITS,W);
 static Type  *Flag   = new Type(Type::UBITS,1);
 
-static Projection* newValSplit(Block *source, Block *target)
-{
-Projection *p = new Projection();
-  p->source  = source;
-  p->target  = target;
-  for(int i=0; i<source->numValues(); i++)
-  {
-    Value *v = source->getValue(i);
-    if(v->type->kind == Type::UBITS && v->type->size > W)
-    {
-      printf("Non-native type @ %d: %s\n", i, v->type->repr().c_str());
-      // Allocate machine words to cover the source value and build a mapping.
-      std::vector<Value*> intervals;
-      for(uint32 j=0; j<v->type->size; j+=W)
-        intervals.push_back( p->target->value(Word) );
-      p->mapping.push_back(intervals);
-
-    }
-    else
-    {
-      std::vector<Value*> intervals;
-      intervals.push_back( target->value(v->type) );
-      p->mapping.push_back( intervals );
-    }
-  }
-  // Register the words making up each input as inputs to the new block.
-  for(int i=0; i<source->numInputs(); i++)
-  {
-    Value *v = source->getInput(i);
-    std::vector<Value*> inpWords = p->mapping[ v->ref ];
-    for(int j=0; j<inpWords.size(); j++)
-      target->input( inpWords[j] );
-  }
-  // Ditto for outputs
-  for(int i=0; i<source->numOutputs(); i++)
-  {
-    Value *v = source->getOutput(i);
-    std::vector<Value*> opWords = p->mapping[ v->ref ];
-    for(int j=0; j<opWords.size(); j++)
-      target->output( opWords[j] );
-  }
-  return p;
-}
-
 Projection *X86Machine::translate(Block *block)
 {
 Block *target = new Block;      // TODO: Strange interface, could alloc inside next...
-Projection *p = newValSplit(block,target);
+Projection *p = newValSplit(block,target,W);
 
   std::vector<Instruction*> order = block->topSort();
   printf("Trans: %zu insts\n",order.size());
