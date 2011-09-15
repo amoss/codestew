@@ -8,26 +8,12 @@
 
 #define W 64
 
-struct Interval
+/*struct Interval
 {
   Value *source;
   uint32 lo, size;
   Value *target;
-};
-
-static Opcode opcodes[] =
-{
-#define ADDCO 0
-  Opcode("addco",2,2),  // Add with carry out :           Word,Word -> Word, Bit
-#define ADDZO 1
-  Opcode("addzo",2,1),  // Add with zero out :            Word,Word -> Word
-#define ADDCICO 2
-  Opcode("addcico",3,2),// Add with carry in, carry out : Word,Word,Bit -> Word, Bit
-#define ADDCIZO 3
-  Opcode("addcizo",3,1),// Add with carry in, zero out  : Word,Word,Bit -> Word
-#define SIGNEXT 4
-  Opcode("signext",1,1),// Extend the input type onto the output type
-};
+}; */
 
 static Type  *Word   = new Type(Type::UBITS,W);
 static Type  *Flag   = new Type(Type::UBITS,1);
@@ -60,8 +46,8 @@ static char const *regNames[] =
 
 static bool opCoalesces(Opcode *op)
 {
-  return op==&opcodes[ADDCO]   || op==&opcodes[ADDZO] ||
-         op==&opcodes[ADDCICO] || op==&opcodes[ADDCIZO];
+  return !strcmp("addco",op->name)   || !strcmp("addzo",op->name) ||
+         !strcmp("addcico",op->name) || !strcmp("addcizo",op->name) ;
 }
 
 Allocation *X86Machine::allocate(Block *block)
@@ -75,7 +61,7 @@ Allocation *regAlloc = new Allocation(block);
   for(int i=0; i<block->numInsts(); i++)
   {
     Instruction *inst = block->getInst(i);
-    if(inst->opcode == &opcodes[ADDCO] || inst->opcode == &opcodes[ADDCICO]) {
+    if( !strcmp(inst->opcode->name,"addco") || !strcmp(inst->opcode->name,"addcico")) {
       regAlloc->regs[ inst->outputs[1]->ref ] = "carry";
     }
   }
@@ -132,17 +118,17 @@ char line[120];
   printf("SIZE %zu\n",order.size());
   for(int i=0; i<order.size(); i++)
   {
-    if( order[i]->opcode == &opcodes[ADDCO] ) {
+    if( !strcmp(order[i]->opcode->name, "addco") ) {
       sprintf(line,"  addq %%%s, %%%s;\n", alloc->regs[ order[i]->inputs[0]->ref ], 
                                        alloc->regs[ order[i]->inputs[1]->ref ]);
       result += line;
     }
-    else if( order[i]->opcode == &opcodes[ADDCICO] ) {
+    else if( !strcmp(order[i]->opcode->name, "addcico") ) {
       sprintf(line,"  adcq %%%s, %%%s;\n", alloc->regs[ order[i]->inputs[0]->ref ], 
                                        alloc->regs[ order[i]->inputs[1]->ref ]);
       result += line;
     }
-    else if( order[i]->opcode == &opcodes[SIGNEXT] &&
+    else if( !strcmp(order[i]->opcode->name, "signext") &&
              !strcmp("carry",alloc->regs[order[i]->inputs[0]->ref]) ) {
       const char *regName = alloc->regs[ order[i]->outputs[0]->ref ];
       sprintf(line,"  xorq %%%s, %%%s;\n  adc #0, %%%s\n",
