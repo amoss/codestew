@@ -49,8 +49,51 @@ std::vector<Instruction*> schedule = block->topSort();
   return std::string();
 }
 
-bool trivial(Block *block, int numRegs, char const**regNames)
+static bool trivial(Allocation *regAlloc)
 {
+  // Check if value set is small enough for trivial allocation
+  int regsNeeded = 0;
+  for(int i=0; i<regAlloc->regs.size(); i++)
+    if( regAlloc->regs[i]==NULL )
+      regsNeeded++;
+  if(regsNeeded <= numRegs)
+  {
+    int regCounter=0;
+    for(int i=0; i<regAlloc->regs.size(); i++)
+      if(regAlloc->regs[i]==NULL)
+        regAlloc->regs[i] = regNames[regCounter++];
+    return true;
+  }
+  printf("Trivial failed %d/%d\n",regsNeeded,numRegs);
+  return false;
+}
 
-  return true;
+static bool modulo(Allocation *regAlloc)
+{
+  return false;
+}
+
+Allocation *ArmMachine::allocate(Block *block)
+{
+Allocation *regAlloc = new Allocation(block);
+  // Presize / initial state is NULL 
+  for(int i=0; i<block->numValues(); i++)
+    regAlloc->regs.push_back(NULL);
+
+  // Nail up fixed registers based on instruction types
+  for(int i=0; i<block->numInsts(); i++)
+  {
+    Instruction *inst = block->getInst(i);
+    if( !strcmp(inst->opcode->name,"addco") || !strcmp(inst->opcode->name,"addcico")) {
+      regAlloc->regs[ inst->outputs[1]->ref ] = "carry";
+    }
+  }
+
+  if( trivial(regAlloc) )
+    return regAlloc; 
+  if( modulo(regAlloc) )
+    return regAlloc;
+  printf("Modulo failed\n");
+  exit(-1);
+  return NULL;
 }
