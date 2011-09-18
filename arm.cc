@@ -106,13 +106,14 @@ static bool checkKill(Instruction *inst, Value *v, std::set<Instruction*> done)
   return true;
 }
 
-static bool allocReg(Value *v, LiveSet &live, FreePool &pool)
+static bool allocReg(Value *v, LiveSet &live, FreePool &pool, Allocation *al)
 {
 FreePool::iterator it;
   if(pool.size()==0)
     return false;
   it = pool.begin();
   live[v] = *it;
+  al->regs[v->ref] = *it;
   pool.erase(it);
   return true;
 }
@@ -123,7 +124,10 @@ LiveSet live;
 FreePool pool;
 std::set<Instruction*> done;
   for(int i=0; i<regAlloc->numInputs(); i++)
+  {
     live[regAlloc->getInput(i)] = regNames[i];
+    regAlloc->regs[regAlloc->getInput(i)->ref] = regNames[i];
+  }
   for(int i=regAlloc->numInputs(); i<numRegs; i++)
     pool.insert(regNames[i]);
 
@@ -156,7 +160,7 @@ std::set<Instruction*> done;
             printf("Still live %llu\n", inst->inputs[i]);
         for(int i=0; i<inst->outputs.size(); i++)
         {
-          if(!allocReg(inst->outputs[i], live, pool))
+          if(!allocReg(inst->outputs[i], live, pool, regAlloc))
           {
             printf("Can't allocate for %s (%zu)\n", inst->repr().c_str(), pool.size());
             return false;
