@@ -37,12 +37,18 @@ Projection *p = newValSplit(block,W);
   return p;
 }
 
-static char const *regNames[] =
+static char const *x86RegNames[] =
 {
   "rax", "rbx", "rcx", "rdx", "rsi", "rdi",
   "r8",  "r9",  "r10", "r11", "r12", "r13", "r14"
 };
 #define NUMREGS (sizeof(regNames)/sizeof(char const *))
+
+X86Machine::X86Machine()
+{
+  this->numRegs = NUMREGS;
+  this->regNames = x86RegNames;
+}
 
 static bool opCoalesces(Opcode *op)
 {
@@ -50,58 +56,15 @@ static bool opCoalesces(Opcode *op)
          !strcmp("addcico",op->name) || !strcmp("addcizo",op->name) ;
 }
 
-Allocation *X86Machine::allocate(Block *block)
+void X86Machine::preAllocActions(Allocation *alloc)
 {
-Allocation *regAlloc = new Allocation(block);
-  // Presize / initial state is NULL 
-  for(int i=0; i<block->numValues(); i++)
-    regAlloc->regs.push_back(NULL);
-
-  // Nail up fixed registers based on instruction types
-  for(int i=0; i<block->numInsts(); i++)
-  {
-    Instruction *inst = block->getInst(i);
-    if( !strcmp(inst->opcode->name,"addco") || !strcmp(inst->opcode->name,"addcico")) {
-      regAlloc->regs[ inst->outputs[1]->ref ] = "carry";
-    }
-  }
-
   // Check for coalesced regs first as reduces reg-pressure
-  for(int i=0; i<block->numValues(); i++)
+  for(int i=0; i<alloc->numValues(); i++)
   {
-    Value *v = block->getValue(i);
+    Value *v = alloc->getValue(i);
     if(v->defined() && opCoalesces(v->def->opcode) && v==v->def->outputs[0])
-      regAlloc->regs[i] = "implied";
+      alloc->regs[i] = "implied";
   }
-
-  // Check if value set is small enough for trivial allocation
-  int regsNeeded = 0;
-  for(int i=0; i<regAlloc->regs.size(); i++)
-    if( regAlloc->regs[i]==NULL )
-      regsNeeded++;
-  if(regsNeeded <= NUMREGS)
-  {
-    int regCounter=0;
-    for(int i=0; i<regAlloc->regs.size(); i++)
-      if(regAlloc->regs[i]==NULL)
-        regAlloc->regs[i] = regNames[regCounter++];
-    for(int i=0; i<regAlloc->regs.size(); i++)
-    {
-      if(!strcmp(regAlloc->regs[i], "implied"))
-      {
-        printf("Coalescing %u\n",i);
-        Value *v = block->getValue(i);
-        Instruction *inst = v->def;
-        printf("From %llu\n",inst->ref);
-        Value *overwritten = inst->inputs[1];
-        regAlloc->regs[i] = regAlloc->regs[overwritten->ref];
-      }
-    }
-    return regAlloc;
-  }
-  printf("Trivial failed\n");
-  exit(-1);
-  return NULL;
 }
 
 std::string X86Machine::outGccInline(Allocation *alloc)

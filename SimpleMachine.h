@@ -12,7 +12,7 @@ class SimpleMachine : public Machine
 {
   static const char *opcodeNames[OP_MAX];
 public:
-
+  SimpleMachine() {}
   uint64 opcode(char *name);
   Type *ubits(int n);
   Value *XOR(Block *block, Value *in0, Value *in1);

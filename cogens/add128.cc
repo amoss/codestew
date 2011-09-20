@@ -53,6 +53,7 @@ int main(int argc, char **argv)
   if(flag("--arm",argc,argv))
   {
     ArmMachine arm;
+    printf("Here %d\n", arm.regNames);
     Projection *armProj = arm.translate(&block);
     Block *armBlock = armProj->target;
     armBlock->dot("testcases/add128arm.dot");

@@ -3,6 +3,7 @@
 #include<vector>
 #include<string>
 #include<set>
+#include<map>
 #include<iterator>
 #include<string.h>
 
@@ -112,10 +113,24 @@ std::vector< Instruction* > schedule;
 
 };
 
+typedef std::map<Value*,char const*> LiveSet;
+typedef std::set<char const*> FreePool;
+
 class Machine
 {
 public:
+  int numRegs;
+  char const **regNames;
+  Machine() {} 
   Opcode *lookup(const char *name);  
+  virtual void preAllocActions(Allocation *alloc) {}
+  Allocation *allocate(Block *block);
+  bool trivial(Allocation *regAlloc);
+  bool instReady(Instruction *inst, LiveSet live);
+  void dumpState(LiveSet live, FreePool pool);
+  bool checkKill(Instruction *inst, Value *v, std::set<Instruction*> done);
+  bool allocReg(Value *v, LiveSet &live, FreePool &pool, Allocation *al);
+  bool modulo(Allocation *regAlloc);
 };
 
 //void x86Output(Block *block);
