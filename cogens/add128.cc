@@ -55,6 +55,7 @@ int main(int argc, char **argv)
     ArmMachine arm;
     Projection *armProj = arm.translate(&block);
     Block *armBlock = armProj->target;
+    armBlock->dot("testcases/add128arm.dot");
     Allocation *armAlloc = arm.allocate(armBlock);
     armAlloc->dot((char*)"testcases/add128armregs.dot");
     printf("Code:\n%s\n", arm.outCodeworks(armBlock).c_str());
