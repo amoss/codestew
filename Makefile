@@ -1,5 +1,5 @@
 DEBUG=-g
-COGENS=cogens/xor cogens/add128
+COGENS=cogens/add128
 all: ${COGENS} pycodestew.so
 clean:
 	rm -f *.o ${COGENS} pycodestew.so testcases/*
@@ -21,7 +21,7 @@ cogens/%: cogens/%.cc codestew.o SimpleMachine.o arm.o x86.o addProj.o
 pycodestew.so: pycodestew.cc codestew.cc codestew.h SimpleMachine.h SimpleMachine.cc
 	g++ -fPIC -I/usr/include/python2.6 -shared pycodestew.cc codestew.cc SimpleMachine.cc -o pycodestew.so -lpython2.6
 
-tests: testcases/add128orig.pdf testcases/add128x86.pdf testcases/add128arm.pdf testcases/add128x86regs.pdf
+tests: testcases/add128orig.pdf testcases/add128x86.pdf testcases/add128arm.pdf testcases/add128x86regs.pdf testcases/add128armregs.pdf
 
 testcases/%.pdf: testcases/%.dot
 	dot -Tpdf $< -o $@
@@ -31,11 +31,12 @@ testcases/%.pdf: testcases/%.dot
 #	dot -Tpdf testcases/add128arm.dot -otestcases/add128arm.pdf
 #testcases/add128x86regs.pdf: testcases/add128x86regs.dot
 #	dot -Tpdf testcases/add128x86regs.dot -otestcases/add128x86regs.pdf
-testcases/add128x86regs.dot: testcases/add128x86.dot
+testcases/add128armregs.dot: testcases/add128arm.dot
 testcases/add128orig.dot: testcases/add128arm.dot
 testcases/add128arm.dot: cogens/add128
 	cogens/add128 --arm
 #testcases/add128x86.pdf: testcases/add128x86.dot
 #	dot -Tpdf testcases/add128x86.dot -otestcases/add128x86.pdf
+testcases/add128x86regs.dot: testcases/add128x86.dot
 testcases/add128x86.dot: cogens/add128
 	cogens/add128 --x86

@@ -106,6 +106,7 @@ class Allocation : public Block
 {
 public:
 std::vector< char const * > regs;
+std::vector< Instruction* > schedule;
   Allocation(Block *orig);
   void dot(const char *filename);
 

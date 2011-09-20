@@ -32,21 +32,44 @@ char const* regNames[] = {
   "r10", "r11" // , "r12"
 };
 int numRegs = 12;
-std::string ArmMachine::outCodeworks(Block *block)
+std::string ArmMachine::outCodeworks(Allocation *alloc)
 {
-  printf("OUTPUT\n");
-  // Trivial register allocator
-  if(block->numValues() > numRegs)
-    return std::string("// TRIVIAL FAILED");
-  printf("HERE?\n");
-std::vector<Instruction*> schedule = block->topSort();
-  for(int i=0; i<schedule.size(); i++)
+  for(int i=0; i<alloc->numValues(); i++)
+    printf("//Val %d: %s\n", i, alloc->regs[i]);
+  for(int i=0; i<alloc->schedule.size(); i++)
   {
-    printf("SLOT %d\n",i);
-    printf("%s %s,%s,%s\n", schedule[i]->opcode->name, 
-           regNames[schedule[i]->inputs[0]->ref],
-           regNames[schedule[i]->inputs[1]->ref],
-           regNames[schedule[i]->outputs[0]->ref]);
+    if( !strcmp(alloc->schedule[i]->opcode->name, "addco") )
+    {
+      printf("  add %s,%s,%s\n",
+             regNames[alloc->schedule[i]->inputs[0]->ref],
+             regNames[alloc->schedule[i]->inputs[1]->ref],
+             regNames[alloc->schedule[i]->outputs[0]->ref]);
+    }
+    else if( !strcmp(alloc->schedule[i]->opcode->name, "addcico") )
+    {
+      printf("  adc %s,%s,%s\n",
+             regNames[alloc->schedule[i]->inputs[0]->ref],
+             regNames[alloc->schedule[i]->inputs[1]->ref],
+             regNames[alloc->schedule[i]->outputs[0]->ref]);
+    }
+    else if( !strcmp(alloc->schedule[i]->opcode->name, "signext") )
+    {
+      printf("  eor %s, %s, %s\n",
+             alloc->regs[ alloc->schedule[i]->outputs[0]->ref ],
+             alloc->regs[ alloc->schedule[i]->outputs[0]->ref ],
+             alloc->regs[ alloc->schedule[i]->outputs[0]->ref ]);
+      printf("  adc %s,%s,#0\n",
+             alloc->regs[alloc->schedule[i]->inputs[0]->ref],
+             alloc->regs[alloc->schedule[i]->outputs[0]->ref]);
+    }
+    else
+    {
+      printf("SLOT %d\n",i);
+      printf("%s %s,%s,%s\n", alloc->schedule[i]->opcode->name, 
+             regNames[alloc->schedule[i]->inputs[0]->ref],
+             regNames[alloc->schedule[i]->inputs[1]->ref],
+             regNames[alloc->schedule[i]->outputs[0]->ref]);
+    }
   }
   return std::string();
 }
@@ -111,14 +134,22 @@ static bool allocReg(Value *v, LiveSet &live, FreePool &pool, Allocation *al)
 FreePool::iterator it;
   if(pool.size()==0)
     return false;
-  it = pool.begin();
-  live[v] = *it;
-  al->regs[v->ref] = *it;
-  pool.erase(it);
+  if( al->regs[v->ref]==NULL )
+  {
+    it = pool.begin();
+    live[v] = *it;
+    al->regs[v->ref] = *it;
+    pool.erase(it);
+  }
+  else
+  {
+    printf("Skipping %llu, preallocated to %s\n", v->ref, al->regs[v->ref] );
+    live[v] = al->regs[v->ref];
+  }
   return true;
 }
 
-static bool modulo(Allocation *regAlloc, std::vector<Instruction*> order)
+static bool modulo(Allocation *regAlloc)
 {
 LiveSet live;
 FreePool pool;
@@ -131,12 +162,12 @@ std::set<Instruction*> done;
   for(int i=regAlloc->numInputs(); i<numRegs; i++)
     pool.insert(regNames[i]);
 
-  while(done.size() < order.size() )
+  while(done.size() < regAlloc->schedule.size() )
   {
     dumpState(live,pool);
-    for(int i=0; i<order.size(); i++)
+    for(int i=0; i<regAlloc->schedule.size(); i++)
     {
-      Instruction *inst = order[i];
+      Instruction *inst = regAlloc->schedule[i];
       std::set<Instruction*>::iterator it=done.find(inst);
       if( it!=done.end() )
         continue;
@@ -157,7 +188,7 @@ std::set<Instruction*> done;
             pool.insert( reg );
           }
           else
-            printf("Still live %llu\n", inst->inputs[i]);
+            printf("Still live %llu\n", inst->inputs[i]->ref);
         for(int i=0; i<inst->outputs.size(); i++)
         {
           if(!allocReg(inst->outputs[i], live, pool, regAlloc))
@@ -179,6 +210,7 @@ std::set<Instruction*> done;
 Allocation *ArmMachine::allocate(Block *block)
 {
 Allocation *regAlloc = new Allocation(block);
+  regAlloc->schedule = regAlloc->topSort();
   // Presize / initial state is NULL 
   for(int i=0; i<block->numValues(); i++)
     regAlloc->regs.push_back(NULL);
@@ -194,8 +226,7 @@ Allocation *regAlloc = new Allocation(block);
 
   if( trivial(regAlloc) )
     return regAlloc; 
-std::vector<Instruction*> order = regAlloc->topSort();
-  if( modulo(regAlloc,order) )
+  if( modulo(regAlloc) )
     return regAlloc;
   printf("Modulo failed\n");
   exit(-1);

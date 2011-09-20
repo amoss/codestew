@@ -58,6 +58,6 @@ int main(int argc, char **argv)
     armBlock->dot("testcases/add128arm.dot");
     Allocation *armAlloc = arm.allocate(armBlock);
     armAlloc->dot((char*)"testcases/add128armregs.dot");
-    printf("Code:\n%s\n", arm.outCodeworks(armBlock).c_str());
+    printf("Code:\n%s\n", arm.outCodeworks(armAlloc).c_str());
   }
 }
