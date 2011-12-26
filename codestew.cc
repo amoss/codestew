@@ -273,7 +273,6 @@ char line[180];
 void Block::dot(const char *filename)
 {
 FILE *f = fopen(filename,"w");
-  printf("Output to %s\n", filename);
   if(f==NULL)
     throw "Cannot open output file";
   fprintf(f,"digraph{\n");
