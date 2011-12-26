@@ -43,7 +43,7 @@ int main(int argc, char **argv)
     std::string withregs    = std::string(argv[1]) + "-arm-regs";
     std::string newbaseDot  = newbase  + ".dot";
     std::string withregsDot = withregs + ".dot";
-    std::string newbaseAsm = newbase + ".asm";
+    std::string newbaseAsm  = newbase + ".asm";
     ArmMachine arm;
     Projection *armProj = arm.translate(&block);
     Block *armBlock = armProj->target;
@@ -56,22 +56,26 @@ int main(int argc, char **argv)
     return 0;
   }
 
-  block.dot((char*)"testcases/add128orig.dot");
-  std::vector<Instruction*> order = block.topSort();
-  printf("%zu\n",order.size());
-  for(int i=0; i<order.size(); i++)
-    printf("%llu\n",order[i]->ref);
-
-  if(flag("--x86",argc,argv))
-  {
+  if(!strcmp("x86",argv[2])) {
+    std::string newbase     = std::string(argv[1]) + "-x86";
+    std::string withregs    = std::string(argv[1]) + "-x86-regs";
+    std::string newbaseDot  = newbase  + ".dot";
+    std::string withregsDot = withregs + ".dot";
+    std::string newbaseAsm  = newbase + ".asm";
     X86Machine x86;
     Projection *x86Proj = x86.translate(&block);
-    printf("X86 translation:\n%s\nX86 block:\n%s\n",x86Proj->dump().c_str(),
-                                                    x86Proj->target->dump().c_str());
-    x86Proj->target->dot("testcases/add128x86.dot");
+    x86Proj->target->dot(newbaseDot.c_str());
     Allocation *x86Regs = x86.allocate(x86Proj->target);
-    x86Regs->dot("testcases/add128x86regs.dot");
+    x86Regs->dot(withregsDot.c_str());
+    FILE *out = fopen(newbaseAsm.c_str(), "wt");
+    fprintf(out, "X86 translation:\n%s\nX86 block:\n%s\n",
+                 x86Proj->dump().c_str(), x86Proj->target->dump().c_str());
     std::string x86Code = x86.outGccInline(x86Regs);
-    printf("Code:\n%s\n", x86Code.c_str());
+    fprintf(out, "Code:\n%s\n", x86Code.c_str());
+    fclose(out);
+    return 0;
   }
+
+  printf("Unknown target architecture: %s\n", argv[2]);
+  return -1;
 }
