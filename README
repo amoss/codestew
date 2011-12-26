@@ -1,0 +1,53 @@
+Rationale
+---------
+There are no raw sources for the testcases, everything is generated programatically from
+C code.  This avoids the need for a parser for a testcase language, better models the
+standard use as an API, and extends more easily to families of generated testcases.
+
+Layout
+------
+Each of the testcases has a .cc generator in the cogen directory. The tests target in
+the makefile will ensure that these are up to date. For each
+  cogens/BASENAME.cc
+an executable called
+  cogens/BASENAME
+will be created. This can then be executed to create output for the different target
+machines. The tests target in the Makefile will try and generate:
+  results/BASENAME-orig.dot       The SimpleMachine source in the testcase
+  results/BASENAME-orig.pdf       As above
+  results/BASENAME-arm.dot        Compiled to ARM instructions
+  results/BASENAME-arm.pdf        As above
+  results/BASENAME-arm-regs.dot   Compiled to ARM instructions and registers 
+  results/BASENAME-arm-regs.pdf   As above
+  results/BASENAME-arm.asm        Codeworks compatible ARM code
+  results/BASENAME-x86.dot        Compiled to x86-64 instructions
+  results/BASENAME-x86.pdf        As above
+  results/BASENAME-x86-regs.dot   Compiled to x86-64 instructions and registers 
+  results/BASENAME-x86-regs.pdf   As above
+
+Testcases
+---------
+Each of the simple operation types has a range of testcases that vary the sizes of the
+operands. The cases that use operands smaller than the word size of the target 
+architecture should combine operands in an appropriate way to improve efficiency. The
+cases that use operands larger than the word size of the target architecture should
+split the operands into appropriate pieces. In all cases the appropriate split / merge
+of operands is one that allows a sequence of instructions with equivalent semantics.
+
+The xor testcases are interesting because the instruction is a piece-wise application
+of a binary operator; operands can be split into arbitrary partitions without
+introducing any dependencies. The merge operation is simply concatenation.
+
+The add testcases can also be decomposed into arbitrary partitions, but a dependency
+on the carry is introduced between each pair of operands in a split. Merging of the
+operands eliminates the carry dependency.
+
+The motivation for the mul testcases is to examine the trade-off between register
+pressure and memory traffic that results from different traversal orders in the
+accumulation of the partial products. 
+
+The hamw testcase shows the sum operation; a generalisation of the add operation to an
+arbitrary number of inputs. There are several well-known hacks for computing this 
+function using few instructions, the research question behind this testcase is can 
+a split/merge operation on sums and a conversion between sum-2/add create a search
+problem with a strong enough bias to find these efficient formulations?
