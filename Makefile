@@ -1,12 +1,12 @@
 DEBUG=-g
-COGENS=build/add64 build/add128
+TESTCASES=add64 add128 add256 xor64 xor128 xor256
+COGENS=$(foreach tc, ${TESTCASES}, build/$(tc))
 OBJS=build/codestew.o build/SimpleMachine.o build/arm.o build/x86.o build/addProj.o \
      build/commonMain.o
 all: ${COGENS} pycodestew.so
 
 build/%.o: src/%.cc Makefile
 	g++ ${DEBUG} -c $< -o $@
-.PRECIOUS: ${OBJS}
 
 build/%: cogens/%.cc ${OBJS}
 	g++ ${DEBUG} -Isrc $< ${OBJS} -o $@
@@ -18,11 +18,14 @@ pycodestew.so: src/pycodestew.cc src/codestew.cc src/codestew.h src/SimpleMachin
 clean:
 	rm -rf pycodestew.so build/* results/*
 
-tests: results/add64-orig.pdf results/add64-arm.pdf results/add64-arm-regs.pdf \
-       results/add64-orig.pdf results/add64-x86.pdf results/add64-x86-regs.pdf \
-       results/add128-orig.pdf results/add128-arm.pdf results/add128-arm-regs.pdf \
-       results/add128-orig.pdf results/add128-x86.pdf results/add128-x86-regs.pdf
+DOTS=$(foreach tc, ${TESTCASES}, results/$(tc)-orig.dot results/$(tc)-arm.dot \
+                                 results/$(tc)-x86.dot  results/$(tc)-arm-regs.dot \
+                                 results/$(tc)-x86-regs.dot)
+PDFS=$(foreach tc, ${TESTCASES}, results/$(tc)-orig.pdf results/$(tc)-arm.pdf \
+                                 results/$(tc)-x86.pdf  results/$(tc)-arm-regs.pdf \
+                                 results/$(tc)-x86-regs.pdf)
 
+tests: ${PDFS}
 results/%-orig.dot results/%-orig.asm: build/%
 	cp util/error.dot results/$*-orig.dot
 	cp util/error.dot results/$*-arm-regs.dot
@@ -38,6 +41,7 @@ results/%-x86.dot results/%-x86-regs.dot results/%-x86.asm: build/%
 	cp util/error.dot results/$*-x86-regs.dot
 	echo "Error" >results/$*-x86.asm
 	-$< results/$* x86 >results/$*-x86.log
+.PRECIOUS: ${OBJS} ${DOTS}
 
 results/%.pdf: results/%.dot
 	dot -Tpdf $< -o $@

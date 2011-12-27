@@ -536,6 +536,5 @@ Allocation *regAlloc = new Allocation(block);
     return regAlloc;
 
   printf("All allocators failed\n");
-  exit(-1);
   return NULL;
 }

@@ -29,6 +29,10 @@ Projection *p = newValSplit(block,W);
     Instruction *inst = order[i];
     if(!strcmp(inst->opcode->name, "add"))
       translateUbitAdd(inst, p, (Machine*)this);
+    else if(!strcmp(inst->opcode->name, "xor")) {
+      printf("XOR projection unimplemented\n");
+      return NULL;
+    }
     else {
       printf("ERROR: Cannot translate\n");
       exit(-1);
