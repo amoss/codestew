@@ -116,13 +116,22 @@ Instruction *result = new Instruction(this,opcode);
 */
 Block *Block::clone()
 {
-Block *result = new Block();
+Block *result = new Block(this->machine);
   copyInto(result);
   return result;
 }
 
+/* Performs a deepcopy, cloning Values/Instructions and then updating refs.
+   Destroys any previous data in result 
+*/
 void Block::copyInto(Block *result)
 {
+  result->values.erase( result->values.begin(), result->values.end() );
+  result->insts.erase( result->insts.begin(), result->insts.end() );
+  result->inputs.erase( result->inputs.begin(), result->inputs.end() );
+  result->outputs.erase( result->outputs.begin(), result->outputs.end() );
+  
+
   // Uses and def ptrs will be mapped in another pass.
   // Shallow sharing of types, assumes a small external set
   for(int i=0; i<values.size(); i++)
@@ -158,6 +167,8 @@ void Block::copyInto(Block *result)
     result->inputs.push_back(inputs[i]);
   for(int i=0; i<outputs.size(); i++)
     result->outputs.push_back(outputs[i]);
+
+  result->machine = machine;
 }
 
 bool Block::isInput(Value *v)
@@ -188,7 +199,7 @@ std::vector<Instruction*> Block::topSort()
 std::vector<Instruction*> order;
 std::set<uint64> ready;
 std::set<Instruction*> done;
-  printf("TOPSORT %zu %zu\n", insts.size(), values.size());
+  //printf("TOPSORT %zu %zu\n", insts.size(), values.size());
   std::copy(inputs.begin(), inputs.end(), inserter(ready,ready.begin()) );
   while(order.size() < insts.size())
   {
@@ -220,7 +231,12 @@ std::set<Instruction*> done;
     //printf("Enabled %d\n",enabled.size());
     if(enabled.size()==0)           // Graph is blocked (disjoint or cyclic), abort
     {
-      printf("Graph is blocked: disjoint or cyclic\n");
+      printf("Graph is blocked: disjoint or cyclic, completed %zu/%zu\n",
+             order.size(), insts.size());
+      for(int i=0; i<order.size(); i++)
+        printf("Order %d: %llu\n", i, order[i]->ref);
+      for(std::set<Instruction*>::iterator i = waiting.begin(); i!=waiting.end(); i++)
+        printf("Waiting: %llu\n", (*i)->ref);
       return order;
     }
     for(std::set<Instruction*>::iterator i=enabled.begin(); i!=enabled.end(); i++)
@@ -326,6 +342,7 @@ char line[120];
 }
 
 Allocation::Allocation(Block *orig)
+  : Block(*orig) // Dummy to init ref, all overwritten by copyInto()
 {
   orig->copyInto(this);
 }
