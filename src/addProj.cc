@@ -1,15 +1,15 @@
 #include <stdio.h>
 #include "addProj.h"
 
-/* Prepare a block for projection onto a lower-level machine. Split every
+/* Prepare a block for projection onto the lower-level machine $m$. Split every
    Ubits<n> where n>W for some register size W into a set of W-bit words.
 */
-Projection* newValSplit(Block *source, int W)
+Projection* newValSplit(Block *source, int W, Machine &m)
 {
 Projection *p = new Projection();
 Type  *Word   = new Type(Type::UBITS,W);
   p->source  = source;
-  p->target  = new Block;
+  p->target  = new Block(m);
   for(int i=0; i<source->numValues(); i++)
   {
     Value *v = source->getValue(i);

@@ -11,7 +11,7 @@ static Type  *Flag   = new Type(Type::UBITS,1);
 
 Projection *ArmMachine::translate(Block *block)
 {
-Projection *p = newValSplit(block,W);
+Projection *p = newValSplit(block,W,*this);
   std::vector<Instruction*> order = block->topSort();
   printf("Trans: %zu insts\n",order.size());
   for(int i=0; i<order.size(); i++)

@@ -71,3 +71,9 @@ block where it is valid relative to the semantics of one particular machine. Thi
 that each block must hold a reference to a particular machine that defines it. The only
 exception will be during construction of blocks, which is deferred to the translation
 functions that map from the semantics of one machine to another.
+
+If we stick a machine in the block that is passed as an initialiser then it becomes 
+impossible to use a default constructor for a block... would this be a problem later?
+There are limited uses for arrays of blocks... jump tables and some representations of
+CFGs... As these will be used sparingly we can tolerate arrays of pointers where 
+necessary and use explicit initialisation...

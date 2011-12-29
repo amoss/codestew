@@ -57,14 +57,17 @@ public:
   bool defined() { return def!=NULL; }
 };
 
+class Machine;
 class Block
 {
 protected:
   std::vector<Instruction*> insts;
   std::vector<Value*> values;
   std::vector<uint64> inputs, outputs;
+  Machine &machine;
 
 public:
+  Block( Machine &m ) : machine(m) {}
   Value *value(Type *type);
   Instruction *instruction(Opcode *opcode);
   Value *input(Type *type);
