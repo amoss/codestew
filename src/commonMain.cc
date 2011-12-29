@@ -27,6 +27,7 @@ int main(int argc, char **argv)
     printf("Failure\n");
     return -1;
   }
+  printf("Cogen built and validated.\n");
 
   if(!strcmp("src",argv[2])) {
     std::string newbase    = std::string(argv[1]) + "-orig";

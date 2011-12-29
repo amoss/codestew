@@ -37,7 +37,39 @@ Value *SimpleMachine::ADD( Block *block, Value *in0, Value *in1, Type *resType)
   return result;
 }
 
+/* Currently this is the only definition of the semantics of the instruction-set
+   for the SimpleMachine. This initial version is purely syntactic checking, it 
+   needs to be complemented by an interpreter for the blocks.
+*/
 bool SimpleMachine::valid( Block *block )
 {
-  return false;
+  for(int i=0; i<block->numInsts(); i++)
+  {
+    Instruction *inst = block->getInst(i);
+    if( inst->opcode == &opcodes[OP_ADD] ) {
+      if( inst->inputs.size()!=2 || inst->outputs.size()!=1 ) {
+        printf("Illegal add instruction for SimpleMachine\n");
+        return false;
+      }
+      if( inst->inputs[0]->type->kind != Type::UBITS ||
+          inst->inputs[1]->type->kind != Type::UBITS ) {
+        printf("SimpleMachine::add is only defined over UBITS\n");
+        return false;
+      }
+      if(!( inst->inputs[0]->type->size == inst->inputs[1]->type->size &&
+           (inst->inputs[0]->type->size == inst->outputs[0]->type->size ||
+            inst->inputs[0]->type->size == inst->outputs[0]->type->size-1) ))
+      {
+        printf("SimpleMachine::add ubits(%u) ubits(%u) -> ubits(%u) undefined\n");
+        return false;
+      }
+    }
+    if( inst->opcode == &opcodes[OP_XOR] ) {
+      if( inst->inputs.size()!=2 || inst->outputs.size()!=1 ) {
+        printf("Illegal xor instruction for SimpleMachine\n");
+        return false;
+      }
+    }
+  }
+  return true;
 }
