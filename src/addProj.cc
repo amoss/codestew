@@ -61,44 +61,49 @@ Type  *Flag   = new Type(Type::UBITS,1);
   printf("Trans: ADD %u %u -> %u\n", leftVals.size(), rightVals.size(), 
                                      targetVals.size());
 
-  ////// We need to do a word+word -> word + spill.
-  ////// Which are the correct instructions, what are the spill semantics?
-
-
-  // Build ADDCO from leftVals[i],rightVals[i] to targetVals[i]
-  Instruction *newI = p->target->instruction(m->lookup("addco"));
-  newI->addInput(leftVals[0]);
-  newI->addInput(rightVals[0]);
-  newI->addOutput(targetVals[0]);
-  Value *carry = newI->addOutput(Flag);
-
-  for(int i=1; i<leftVals.size()-1; i++)
+  bool inCarry = false;
+  // For all but the final word assume that a carry is produced within the chain.
+  Instruction *newI;
+  Value *carry;
+  for(int i=0; i<leftVals.size()-1; i++)
   {
-    // Build ADDCICO from leftVals[i],rightVals[i] to targetVals[i]
-    newI = p->target->instruction(m->lookup("addcico"));
+    if( inCarry )
+      newI = p->target->instruction(m->lookup("addcico"));
+    else 
+      newI = p->target->instruction(m->lookup("addco"));
     newI->addInput(leftVals[i]);
     newI->addInput(rightVals[i]);
-    newI->addInput(carry);
+    if( inCarry )
+      newI->addInput(carry);
     newI->addOutput(targetVals[i]);
     carry = newI->addOutput(Flag);
+    inCarry = true;
   }
-  // Decide how to handle the final carry flag
   if( targetVals.size() == leftVals.size() )
   {
     // Drop the final carry (no extra word to spill into)
-    newI = p->target->instruction(m->lookup("addcizo"));
+    if( inCarry )
+      newI = p->target->instruction(m->lookup("addcizo"));
+    else
+      newI = p->target->instruction(m->lookup("add"));   // ?? Perhaps call this addzizo
     newI->addInput(leftVals[leftVals.size()-1]);
     newI->addInput(rightVals[rightVals.size()-1]);
-    newI->addInput(carry);
+    if( inCarry )
+      newI->addInput(carry);
     newI->addOutput(targetVals[targetVals.size()-1]);
   }
   else
   {
     // Spill the final carry into an extra word.
-    newI = p->target->instruction(m->lookup("addcico"));
+    if( inCarry )
+      newI = p->target->instruction(m->lookup("addcico"));
+    else
+      newI = p->target->instruction(m->lookup("addco"));   // ?? Perhaps call this addzico
+
     newI->addInput(leftVals[leftVals.size()-1]);
     newI->addInput(rightVals[rightVals.size()-1]);
-    newI->addInput(carry);
+    if( inCarry )
+      newI->addInput(carry);
     newI->addOutput(targetVals[targetVals.size()-2]);
     carry = newI->addOutput(Flag);
     newI = p->target->instruction(m->lookup("signext"));
