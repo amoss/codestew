@@ -314,6 +314,11 @@ FILE *f = fopen(filename,"w");
   fclose(f);
 }
 
+bool Block::valid()
+{
+  return this->machine.valid(this);
+}
+
 /*char const *x86Names[] =
 {
   "rax", "rbx", "rcx", "rdx", "rdi", "rsi", 

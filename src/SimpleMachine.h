@@ -17,5 +17,7 @@ public:
   Type *ubits(int n);
   Value *XOR(Block *block, Value *in0, Value *in1);
   Value *ADD(Block *block, Value *in0, Value *in1, Type *result);
+
+  bool valid(Block *block);
 };
 #endif

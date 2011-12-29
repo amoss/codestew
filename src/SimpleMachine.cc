@@ -36,3 +36,8 @@ Value *SimpleMachine::ADD( Block *block, Value *in0, Value *in1, Type *resType)
   Value *result = inst->addOutput( resType );
   return result;
 }
+
+bool SimpleMachine::valid( Block *block )
+{
+  return false;
+}

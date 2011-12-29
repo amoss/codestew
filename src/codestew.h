@@ -91,6 +91,8 @@ public:
 
   std::string dump();
   void dot(const char *filename);
+
+  bool valid();
 };
 
 /* Store a mapping between values in the left block and values in the right block.
@@ -134,6 +136,7 @@ public:
   bool checkKill(Instruction *inst, Value *v, std::set<Instruction*> done);
   bool allocReg(Value *v, LiveSet &live, FreePool &pool, Allocation *al);
   bool modulo(Allocation *regAlloc);
+  virtual bool valid(Block *block) = 0;
 };
 
 //void x86Output(Block *block);

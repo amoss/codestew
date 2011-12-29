@@ -23,7 +23,7 @@ int main(int argc, char **argv)
     return -1;
   }
   printf("Build source: %s\n", argv[1]);
-  if(!makeSource(block,machine)) {
+  if(!makeSource(block,machine) || !block.valid()) {
     printf("Failure\n");
     return -1;
   }

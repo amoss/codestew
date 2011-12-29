@@ -6,6 +6,7 @@ public:
   ArmMachine();
   Projection *translate(Block *block);
   std::string outCodeworks(Allocation *alloc);
+  bool valid(Block *block);
 };
 
 

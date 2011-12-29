@@ -111,3 +111,8 @@ char line[120];
   result += "\");\n";
   return result;
 }
+
+bool X86Machine::valid(Block *block)
+{
+  return false;
+}

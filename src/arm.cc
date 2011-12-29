@@ -83,3 +83,8 @@ std::string ArmMachine::outCodeworks(Allocation *alloc)
   }
   return std::string();
 }
+
+bool ArmMachine::valid( Block *block )
+{
+  return false;
+}

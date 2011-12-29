@@ -7,6 +7,7 @@ public:
   Projection *translate(Block *block);
   void preAllocActions(Allocation *alloc);
   std::string outGccInline(Allocation *p);
+  bool valid(Block *block);
 };
 
 
