@@ -49,6 +49,7 @@ static PyObject *Type_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
 
 typedef struct _BlockObject {
     PyObject_HEAD
+//  NOTE: TODO: Should have a MachineObject* here to allow proper definition of _init...
     Block *block;
     std::vector<InstructionObject*> cache;
 } BlockObject;
@@ -204,6 +205,8 @@ static PyGetSetDef Instruction_getseters[] = {
 };
 PYTYPE(Instruction)
 
+#define Block_new NULL
+/* Semantics have changed, impossible to construct a block independently of a machine
 static PyObject *Block_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
 {
     BlockObject *self;
@@ -211,13 +214,14 @@ static PyObject *Block_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
     if (self != NULL) {
     }
     return (PyObject *)self;
-}
+}*/
 
-static int Block_init(BlockObject *self, PyObject *args, PyObject *kwds)
+#define Block_init NULL
+/*static int Block_init(BlockObject *self, PyObject *args, PyObject *kwds)
 {
   self->block = new Block();
     return 0;
-}
+}*/
 
 static PyObject *Block_repr(PyObject *self)
 {
