@@ -51,3 +51,23 @@ arbitrary number of inputs. There are several well-known hacks for computing thi
 function using few instructions, the research question behind this testcase is can 
 a split/merge operation on sums and a conversion between sum-2/add create a search
 problem with a strong enough bias to find these efficient formulations?
+
+Issues
+------
+
+There is nowhere in the code/docs that defines the semantics of the instructions that
+we use. There is no form of validity checking to enforce the semantics. There is no
+definite list of what can or cannot be used in any of the machines. The only place that
+the semantics are exposed is implicity in the translation functions.
+
+The simple machine should avoid the use of carry flags, although every machine that we
+compile directly onto will use them they are an artifact of the implementation and should
+be avoided in the source language. Each use of an instruction that modifies an
+architecturally unique and unnamed carry flag introduces a sequential dependency into
+the instruction stream and breaks the declarative dataflow in the program.
+
+The sensible way to enforce validity is to have a series of well-defined points for the
+block where it is valid relative to the semantics of one particular machine. This implies
+that each block must hold a reference to a particular machine that defines it. The only
+exception will be during construction of blocks, which is deferred to the translation
+functions that map from the semantics of one machine to another.

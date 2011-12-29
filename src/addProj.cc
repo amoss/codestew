@@ -55,10 +55,15 @@ Type  *Word   = new Type(Type::UBITS,W);
 void translateUbitAdd(Instruction *inst, Projection *p, Machine *m)
 {
 Type  *Flag   = new Type(Type::UBITS,1);
-  printf("Trans: ADD\n");
   std::vector<Value*> leftVals  = p->mapping[ inst->inputs[0]->ref ];
   std::vector<Value*> rightVals = p->mapping[ inst->inputs[1]->ref ];
   std::vector<Value*> targetVals = p->mapping[ inst->outputs[0]->ref ];
+  printf("Trans: ADD %u %u -> %u\n", leftVals.size(), rightVals.size(), 
+                                     targetVals.size());
+
+  ////// We need to do a word+word -> word + spill.
+  ////// Which are the correct instructions, what are the spill semantics?
+
 
   // Build ADDCO from leftVals[i],rightVals[i] to targetVals[i]
   Instruction *newI = p->target->instruction(m->lookup("addco"));
