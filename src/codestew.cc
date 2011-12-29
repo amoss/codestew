@@ -381,7 +381,7 @@ FILE *f = fopen(filename,"w");
   fclose(f);
 }
 
-static Opcode genericOps[] =
+/*static Opcode genericOps[] =
 {
   Opcode("addco",2,2),  // Add with carry out :           Word,Word -> Word, Bit
   Opcode("addzo",2,1),  // Add with zero out :            Word,Word -> Word
@@ -397,7 +397,7 @@ Opcode *Machine::lookup(const char *name)
     if(!strcmp(name,genericOps[i].name) )
       return &genericOps[i];
   return NULL;
-}
+}*/
 
 bool Machine::trivial(Allocation *regAlloc)
 {
