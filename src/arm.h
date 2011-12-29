@@ -10,6 +10,7 @@ public:
 
   // Translation layer
   void translateUbitAdd(Instruction *inst, Projection *p);
+  void translateUbitXor(Instruction *inst, Projection *p);
 
   // Emit helper functions
   void   addzizo(Block *block, Value *l, Value *r, Value *out);
@@ -17,6 +18,7 @@ public:
   void   addcizo(Block *block, Value *l, Value *r, Value *car, Value *out);
   Value* addcico(Block *block, Value *l, Value *r, Value *car, Value *out);
   void   signext(Block *block, Value *in, Value *out);
+  void   emitXor(Block *block, Value *l, Value *r, Value *out);
 };
 
 

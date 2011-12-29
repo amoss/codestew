@@ -30,6 +30,8 @@ static Opcode armOpcodes[] =
 #define OP_ADDCIZO 3
   Opcode("signext",1,1),// Extend the input type onto the output type
 #define OP_SIGNEXT 4
+  Opcode("xor",2,1),    // Word, Word -> Word
+#define OP_XOR 5
   Opcode(NULL,-1,-1)
 };
 
@@ -45,10 +47,8 @@ Projection *p = newValSplit(block,W,*this);
     Instruction *inst = order[i];
     if(!strcmp(inst->opcode->name, "add"))
       translateUbitAdd(inst, p);
-    else if(!strcmp(inst->opcode->name, "xor")) {
-      printf("XOR projection unimplemented\n");
-      return NULL;
-    }
+    else if(!strcmp(inst->opcode->name, "xor"))
+      translateUbitXor(inst, p);
     else {
       printf("ERROR: Cannot translate\n");
       exit(-1);
@@ -98,6 +98,19 @@ Type  *Flag   = new Type(Type::UBITS,1);
   }
 }
 
+void X86Machine::translateUbitXor(Instruction *inst, Projection *p)
+{
+  std::vector<Value*> leftVals  = p->mapping[ inst->inputs[0]->ref ];
+  std::vector<Value*> rightVals = p->mapping[ inst->inputs[1]->ref ];
+  std::vector<Value*> targetVals = p->mapping[ inst->outputs[0]->ref ];
+  printf("Trans: XOR %zu %zu -> %zu\n", leftVals.size(), rightVals.size(), 
+                                        targetVals.size());
+  // ASSERT(from prev valid): leftVals.size() == rightVals.size()
+  size_t n = leftVals.size();
+  for(int i=0; i<n; i++)
+    emitXor( p->target, leftVals[i], rightVals[i], targetVals[i] );
+}
+
 void   X86Machine::addzizo(Block *block, Value *l, Value *r, Value *out)
 {
 Instruction *inst = block->instruction( &armOpcodes[OP_ADDZIZO] );
@@ -138,6 +151,14 @@ void   X86Machine::signext(Block *block, Value *in, Value *out)
 {
 Instruction *inst = block->instruction( &armOpcodes[OP_SIGNEXT] );
   inst->addInput(in); 
+  inst->addOutput(out);
+}
+
+void   X86Machine::emitXor(Block *block, Value *l, Value *r, Value *out)
+{
+Instruction *inst = block->instruction( &armOpcodes[OP_XOR] );
+  inst->addInput(l); 
+  inst->addInput(r); 
   inst->addOutput(out);
 }
 
