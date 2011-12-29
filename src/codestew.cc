@@ -434,7 +434,10 @@ void Machine::dumpState(LiveSet live, FreePool pool)
 LiveSet::iterator lit;
 FreePool::iterator pit;
   for(lit=live.begin(); lit!=live.end(); lit++)
-      printf("%s:%s ", (*lit).first->type->repr().c_str(), (*lit).second);
+  {
+    //printf("%llu %llu\n", (*lit).first, (*lit).second);
+    printf("%s:%s ", (*lit).first->type->repr().c_str(), (*lit).second);
+  }
   printf("| ");
   for(pit=pool.begin(); pit!=pool.end(); pit++)
     printf("%s ", *pit);
@@ -476,6 +479,12 @@ bool Machine::modulo(Allocation *regAlloc)
 LiveSet live;
 FreePool pool;
 std::set<Instruction*> done;
+  if( regAlloc->numInputs() > numRegs )
+  {
+    printf("Too many inputs (%zu) for registers (%u), ABI impossible!\n", 
+           regAlloc->numInputs(), numRegs);
+    return false;
+  }
   for(int i=0; i<regAlloc->numInputs(); i++)
   {
     live[regAlloc->getInput(i)] = regNames[i];
@@ -486,6 +495,7 @@ std::set<Instruction*> done;
 
   while(done.size() < regAlloc->schedule.size() )
   {
+    printf("Modulo pass: %zu / %zu\n", done.size(), regAlloc->schedule.size() );
     dumpState(live,pool);
     for(int i=0; i<regAlloc->schedule.size(); i++)
     {

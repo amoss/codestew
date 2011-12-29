@@ -1,5 +1,5 @@
 DEBUG=-g
-TESTCASES=add64 add128 add256 xor64 xor128 xor256
+TESTCASES=add64 add128 add256 add512 xor64 xor128 xor256 xor512
 COGENS=$(foreach tc, ${TESTCASES}, build/$(tc))
 OBJS=build/codestew.o build/SimpleMachine.o build/arm.o build/x86.o build/addProj.o \
      build/commonMain.o
@@ -28,8 +28,7 @@ PDFS=$(foreach tc, ${TESTCASES}, results/$(tc)-orig.pdf results/$(tc)-arm.pdf \
 tests: ${PDFS}
 results/%-orig.dot results/%-orig.asm: build/%
 	cp util/error.dot results/$*-orig.dot
-	cp util/error.dot results/$*-arm-regs.dot
-	echo "Error" >results/$*-arm.asm
+	echo "Error" >results/$*-orig.asm
 	-$< results/$* src >results/$*-orig.log
 results/%-arm.dot results/%-arm-regs.dot results/%-arm.asm: build/%
 	cp util/error.dot results/$*-arm.dot
