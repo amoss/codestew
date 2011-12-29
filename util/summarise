@@ -1,0 +1,12 @@
+#!/bin/bash
+
+# Loop over the cogen testcases
+echo "Test	simple	ARM	x86"
+for t in $@;
+do
+  echo -n "$t	"
+  tail -n1 results/$t-orig.log | tr '\n' '\t'
+  tail -n1 results/$t-arm.log | tr '\n' '\t'
+  tail -n1 results/$t-x86.log | tr '\n' '\t'
+  echo
+done

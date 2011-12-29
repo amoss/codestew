@@ -46,3 +46,6 @@ results/%-x86.dot results/%-x86-regs.dot results/%-x86.asm: build/%
 results/%.pdf: results/%.dot
 	dot -Tpdf $< -o $@
 
+summary: tests
+	util/summarise ${TESTCASES} >summary
+	cat summary
