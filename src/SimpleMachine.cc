@@ -8,7 +8,9 @@ static Opcode opcodes[] =
 #define OP_XOR 0
   Opcode("xor",2,1),
 #define OP_ADD 1
-  Opcode("add",2,1)
+  Opcode("add",2,1),
+#define OP_MUL 2
+  Opcode("mul",2,1)
 };
 
 Type *SimpleMachine::ubits(int n)
@@ -60,7 +62,17 @@ Value *SimpleMachine::ADD( Block *block, Value *in0, Value *in1, Type *resType)
 
 Value *SimpleMachine::MUL(Block *block, Value *in0, Value *in1)
 {
-  throw "MUL not yet implemented";
+  Instruction *inst = block->instruction( &opcodes[OP_MUL] );
+  printf("%u %u\n", in0->type->kind, in1->type->kind );
+  if( in0->type->kind!=Type::UBITS ||
+      in1->type->kind!=Type::UBITS )
+    throw "MUL on non-UBITS value types";
+  // TODO: Standard memory leak on type object
+  Type *resType = new Type( Type::UBITS, in0->type->size+in1->type->size );
+  inst->addInput( in0 );
+  inst->addInput( in1 );
+  Value *result = inst->addOutput( resType );
+  return result;
 }
 
 Value *SimpleMachine::CONCAT(Block *block, Value *lowBits, Value *hiBits)
