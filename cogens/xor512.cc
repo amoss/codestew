@@ -13,7 +13,7 @@ bool makeSource(Block &block, SimpleMachine &machine)
   try {
     Value *in0 = block.input(word512);
     Value *in1 = block.input(word512);
-    Value *t1  = machine.XOR( &block, in0, in1);
+    Value *t1  = machine.LXOR( &block, in0, in1);
     block.output(t1);
   }
   catch(char const* err)

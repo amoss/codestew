@@ -97,6 +97,11 @@ Value *result = new Value(type);
   return result;
 }
 
+Value *Block::constant(Type *type, uint64 init)
+{
+  throw "Block::constant not yet implemented";
+}
+
 Instruction *Block::instruction(Opcode *opcode)
 {
 Instruction *result = new Instruction(this,opcode);

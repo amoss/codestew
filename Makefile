@@ -1,5 +1,5 @@
 DEBUG=-g
-TESTCASES=add64 add128 add256 add512 xor64 xor128 xor256 xor512
+TESTCASES=add64 add128 add256 add512 xor64 xor128 xor256 xor512 mul64 md5
 COGENS=$(foreach tc, ${TESTCASES}, build/$(tc))
 OBJS=build/codestew.o build/SimpleMachine.o build/arm.o build/x86.o build/addProj.o \
      build/commonMain.o

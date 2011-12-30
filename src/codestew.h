@@ -69,6 +69,7 @@ protected:
 public:
   Block( Machine &m ) : machine(m) {}
   Value *value(Type *type);
+  Value *constant(Type *type, uint64 init);
   Instruction *instruction(Opcode *opcode);
   Value *input(Type *type);
   void input(Value *v);

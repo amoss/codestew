@@ -9,11 +9,11 @@
 
 bool makeSource(Block &block, SimpleMachine &machine)
 {
-  Type *word64 = new Type(Type::UBITS, 64);
+  Type *single = new Type(Type::UBITS, 64);
   try {
-    Value *in0 = block.input(word64);
-    Value *in1 = block.input(word64);
-    Value *t1  = machine.LXOR( &block, in0, in1);
+    Value *in0 = block.input(single);
+    Value *in1 = block.input(single);
+    Value *t1  = machine.MUL( &block, in0, in1);
     block.output(t1);
   }
   catch(char const* err)

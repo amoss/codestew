@@ -15,7 +15,7 @@ Type *SimpleMachine::ubits(int n)
 {
 }
 
-Value *SimpleMachine::XOR( Block *block, Value *in0, Value *in1)
+Value *SimpleMachine::LXOR( Block *block, Value *in0, Value *in1)
 {
   Instruction *inst = block->instruction( &opcodes[OP_XOR] );
   if( !in0->type->equals(in1->type) )
@@ -24,6 +24,26 @@ Value *SimpleMachine::XOR( Block *block, Value *in0, Value *in1)
   inst->addInput( in1 );
   Value *result = inst->addOutput( in0->type );
   return result;
+}
+
+Value *SimpleMachine::LAND(Block *block, Value *in0, Value *in1)
+{
+  throw "LAND not yet implemented";
+}
+
+Value *SimpleMachine::LNOT(Block *block, Value *in)
+{
+  throw "LNOT not yet implemented";
+}
+
+Value *SimpleMachine::LOR(Block *block,  Value *in0, Value *in1)
+{
+  throw "LOR not yet implemented";
+}
+
+Value *SimpleMachine::COPY(Block *block, Value *in)
+{
+  throw "COPY not yet implemented";
 }
 
 Value *SimpleMachine::ADD( Block *block, Value *in0, Value *in1, Type *resType)
@@ -35,6 +55,27 @@ Value *SimpleMachine::ADD( Block *block, Value *in0, Value *in1, Type *resType)
   inst->addInput( in1 );
   Value *result = inst->addOutput( resType );
   return result;
+}
+
+
+Value *SimpleMachine::MUL(Block *block, Value *in0, Value *in1)
+{
+  throw "MUL not yet implemented";
+}
+
+Value *SimpleMachine::CONCAT(Block *block, Value *lowBits, Value *hiBits)
+{
+  throw "CONCAT not yet implemented";
+}
+
+Value *SimpleMachine::EXTRACT(Block *block, Value *src, int lo, int hi)
+{
+  throw "EXTRACT not yet implemented";
+}
+
+Value *SimpleMachine::UPROT(Block *block, Value *in, int num)
+{
+  throw "UPROT not yet implemented";
 }
 
 /* Currently this is the only definition of the semantics of the instruction-set
