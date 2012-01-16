@@ -355,7 +355,7 @@ static PyObject *simpleXor(PyObject *self, PyObject *args)
       right->ob_type   != &ValueType ||
       outType->ob_type != &TypeType)
     return NULL;
-  Value *output = ((SimpleMachineObject*)self)->machine->XOR( ((BlockObject*)block)->block, 
+  Value *output = ((SimpleMachineObject*)self)->machine->LXOR(((BlockObject*)block)->block, 
                                  ((ValueObject*)left)->value, ((ValueObject*)right)->value);
   ValueObject *result = (ValueObject*)_PyObject_New(&ValueType);
   result->value = output;

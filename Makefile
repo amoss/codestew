@@ -11,9 +11,10 @@ build/%.o: src/%.cc Makefile
 build/%: cogens/%.cc ${OBJS}
 	g++ ${DEBUG} -Isrc $< ${OBJS} -o $@
 
+PYNAME=python2.7    # Different install on the mac/linux boxes
 pycodestew.so: src/pycodestew.cc src/codestew.cc src/codestew.h src/SimpleMachine.h \
                src/SimpleMachine.cc
-	g++ -fPIC -I/usr/include/python2.6 -shared src/pycodestew.cc src/codestew.cc src/SimpleMachine.cc -o pycodestew.so -lpython2.6
+	g++ -fPIC -I/usr/include/${PYNAME} -shared src/pycodestew.cc src/codestew.cc src/SimpleMachine.cc -o pycodestew.so -l${PYNAME}
 
 clean:
 	rm -rf pycodestew.so build/* results/*

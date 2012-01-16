@@ -3,6 +3,7 @@
 
 #include "codestew.h"
 #include <string.h>
+#include <stdio.h>
 
 class SimpleMachine : public Machine
 {
