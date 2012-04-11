@@ -16,7 +16,7 @@ public:
     UBITS, SBITS, INT, VECTOR, MATRIX, CUSTOM
   } kind;
   uint64 size;
-  Type( Kind, uint64 );
+  Type( Kind, uint64 size=0 );
   bool equals(Type *other);
   std::string repr();
 };
@@ -46,6 +46,17 @@ public:
   std::string repr();
 };
 
+class UbitsConstant
+{
+public:
+  UbitsConstant(int n) {
+    size = n;
+    bits = new bool[n];
+  }
+  int size;
+  bool *bits;
+};
+
 class Value
 {
 public:
@@ -55,6 +66,7 @@ public:
   Type *type;
   Value(Type *type);
   bool defined() { return def!=NULL; }
+  void *constant;
 };
 
 class Machine;

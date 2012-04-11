@@ -70,6 +70,7 @@ Value::Value(Type *type)
 {
   this->type = type;
   def = NULL;
+  this->constant = NULL;
 }
 
 Value *Block::input(Type *type)
@@ -99,7 +100,18 @@ Value *result = new Value(type);
 
 Value *Block::constant(Type *type, uint64 init)
 {
-  throw "Block::constant not yet implemented";
+Value *v;
+  switch(type->kind)
+  {
+    case Type::UBITS:
+      v = value(type);
+      v->constant = new UbitsConstant(type->size);
+      return v;
+    case Type::INT:
+      throw "Block::constant not yet for ints";
+    default:
+      throw "Block::constant not yet implemented";
+  }
 }
 
 Instruction *Block::instruction(Opcode *opcode)

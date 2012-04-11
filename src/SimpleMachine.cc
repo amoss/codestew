@@ -10,7 +10,19 @@ static Opcode opcodes[] =
 #define OP_ADD 1
   Opcode("add",2,1),
 #define OP_MUL 2
-  Opcode("mul",2,1)
+  Opcode("mul",2,1),
+#define OP_COPY 3
+  Opcode("copy",1,1),
+#define OP_LAND 4
+  Opcode("land",2,1),
+#define OP_LNOT 5
+  Opcode("lnot",1,1),
+#define OP_LOR 5
+  Opcode("lor",2,1),
+#define OP_EXTRACT 6
+  Opcode("extract",3,1),
+#define OP_UPROT 7
+  Opcode("uprot",2,1)
 };
 
 Type *SimpleMachine::ubits(int n)
@@ -19,7 +31,7 @@ Type *SimpleMachine::ubits(int n)
 
 Value *SimpleMachine::LXOR( Block *block, Value *in0, Value *in1)
 {
-  Instruction *inst = block->instruction( &opcodes[OP_XOR] );
+Instruction *inst = block->instruction( &opcodes[OP_XOR] );
   if( !in0->type->equals(in1->type) )
     throw "XOR on inequal value types";
   inst->addInput( in0 );
@@ -30,27 +42,46 @@ Value *SimpleMachine::LXOR( Block *block, Value *in0, Value *in1)
 
 Value *SimpleMachine::LAND(Block *block, Value *in0, Value *in1)
 {
-  throw "LAND not yet implemented";
+Instruction *inst = block->instruction( &opcodes[OP_LAND] );
+  if( !in0->type->equals(in1->type) )
+    throw "LAND on inequal value types";
+  inst->addInput( in0 );
+  inst->addInput( in1 );
+  Value *result = inst->addOutput( in0->type );
+  return result;
 }
 
 Value *SimpleMachine::LNOT(Block *block, Value *in)
 {
-  throw "LNOT not yet implemented";
+Instruction *inst = block->instruction( &opcodes[OP_LNOT] );
+  inst->addInput( in );
+  Value *result = inst->addOutput( in->type );
+  return result;
 }
 
 Value *SimpleMachine::LOR(Block *block,  Value *in0, Value *in1)
 {
-  throw "LOR not yet implemented";
+Instruction *inst = block->instruction( &opcodes[OP_LOR] );
+  if( !in0->type->equals(in1->type) )
+    throw "LOR on inequal value types";
+  inst->addInput( in0 );
+  inst->addInput( in1 );
+  Value *result = inst->addOutput( in0->type );
+  return result;
 }
 
 Value *SimpleMachine::COPY(Block *block, Value *in)
 {
-  throw "COPY not yet implemented";
+Instruction *inst = block->instruction( &opcodes[OP_COPY] );
+  inst->addInput( in );
+  Value *result = inst->addOutput( in->type );
+  return result;
 }
 
+// NOTE: Can't remember how we're handling carries at this point...
 Value *SimpleMachine::ADD( Block *block, Value *in0, Value *in1, Type *resType)
 {
-  Instruction *inst = block->instruction( &opcodes[OP_ADD] );
+Instruction *inst = block->instruction( &opcodes[OP_ADD] );
   if( !in0->type->equals(in1->type) )
     throw "ADD on inequal value types";
   inst->addInput( in0 );
@@ -82,7 +113,19 @@ Value *SimpleMachine::CONCAT(Block *block, Value *lowBits, Value *hiBits)
 
 Value *SimpleMachine::EXTRACT(Block *block, Value *src, int lo, int hi)
 {
-  throw "EXTRACT not yet implemented";
+  if(src->type->kind != Type::UBITS)
+    throw "EXTRACT not yet implemented on non-UBITS type";
+Instruction *inst = block->instruction( &opcodes[OP_EXTRACT] );
+  inst->addInput(src);
+Type *ints = new Type( Type::INT );
+Value *loParam = block->constant( ints, (uint64)lo );
+Value *hiParam = block->constant( ints, (uint64)hi );
+  inst->addInput(loParam);
+  inst->addInput(hiParam);
+int size = hi-lo+1;
+Type *resType = new Type( Type::UBITS, size);
+Value *result = inst->addOutput(resType);
+  return result;
 }
 
 Value *SimpleMachine::UPROT(Block *block, Value *in, int num)
