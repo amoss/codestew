@@ -108,7 +108,9 @@ Value *v;
       v->constant = new UbitsConstant(type->size);
       return v;
     case Type::INT:
-      throw "Block::constant not yet for ints";
+      v = value(type);
+      v->constant = new IntConstant((int)init);
+      return v;
     default:
       throw "Block::constant not yet implemented";
   }

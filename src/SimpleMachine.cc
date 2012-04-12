@@ -22,7 +22,9 @@ static Opcode opcodes[] =
 #define OP_EXTRACT 6
   Opcode("extract",3,1),
 #define OP_UPROT 7
-  Opcode("uprot",2,1)
+  Opcode("uprot",2,1),
+#define OP_CONCAT 8
+  Opcode("concat",2,1)
 };
 
 Type *SimpleMachine::ubits(int n)
@@ -108,7 +110,16 @@ Value *SimpleMachine::MUL(Block *block, Value *in0, Value *in1)
 
 Value *SimpleMachine::CONCAT(Block *block, Value *lowBits, Value *hiBits)
 {
-  throw "CONCAT not yet implemented";
+  Instruction *inst = block->instruction( &opcodes[OP_CONCAT] );
+  if( lowBits->type->kind!=Type::UBITS ||
+      hiBits->type->kind!=Type::UBITS )
+    throw "CONCAT on non-UBITS value types";
+  // TODO: Standard memory leak on type object
+  Type *resType = new Type( Type::UBITS, lowBits->type->size+hiBits->type->size );
+  inst->addInput( lowBits );
+  inst->addInput( hiBits );
+  Value *result = inst->addOutput( resType );
+  return result;
 }
 
 Value *SimpleMachine::EXTRACT(Block *block, Value *src, int lo, int hi)
@@ -128,9 +139,17 @@ Value *result = inst->addOutput(resType);
   return result;
 }
 
-Value *SimpleMachine::UPROT(Block *block, Value *in, int num)
+Value *SimpleMachine::UPROT(Block *block, Value *src, int num)
 {
-  throw "UPROT not yet implemented";
+  if(src->type->kind != Type::UBITS)
+    throw "UPROT not yet implemented on non-UBITS type";
+Instruction *inst = block->instruction( &opcodes[OP_UPROT] );
+  inst->addInput(src);
+Type *ints = new Type( Type::INT );
+Value *shift = block->constant( ints, (uint64)num );
+  inst->addInput(shift);
+Value *result = inst->addOutput(src->type);
+  return result;
 }
 
 /* Currently this is the only definition of the semantics of the instruction-set

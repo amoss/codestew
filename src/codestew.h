@@ -57,6 +57,15 @@ public:
   bool *bits;
 };
 
+class IntConstant
+{
+public:
+  IntConstant(int n) {
+    value = n;
+  }
+  int value;
+};
+
 class Value
 {
 public:

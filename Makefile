@@ -44,7 +44,7 @@ results/%-x86.dot results/%-x86-regs.dot results/%-x86.asm: build/%
 .PRECIOUS: ${OBJS} ${DOTS}
 
 results/%.pdf: results/%.dot
-	dot -Tpdf $< -o $@
+	timeout 20 dot -Tpdf $< -o $@ || true
 
 summary: tests
 	util/summarise ${TESTCASES} >summary
