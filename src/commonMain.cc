@@ -1,6 +1,7 @@
 #include<stdio.h>
 #include "arm.h"
 #include "x86.h"
+#include "vis.h"
 
 bool flag(const char *flag, int argc, char **argv)
 {
@@ -38,6 +39,8 @@ int main(int argc, char **argv)
     fclose(out);
     block.dot(newbaseDot.c_str());
     printf("Success\n");
+
+    partition(&block);
     return 0;
   }
 

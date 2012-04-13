@@ -2,7 +2,9 @@ DEBUG=-g
 TESTCASES=add64 add128 add256 add512 xor64 xor128 xor256 xor512 mul64 md5
 COGENS=$(foreach tc, ${TESTCASES}, build/$(tc))
 OBJS=build/codestew.o build/SimpleMachine.o build/arm.o build/x86.o build/addProj.o \
-     build/commonMain.o
+     build/commonMain.o build/vis.o
+TIMEOUT=
+#TIMEOUT=timeout 20
 all: ${COGENS} pycodestew.so
 
 build/%.o: src/%.cc Makefile
@@ -44,7 +46,7 @@ results/%-x86.dot results/%-x86-regs.dot results/%-x86.asm: build/%
 .PRECIOUS: ${OBJS} ${DOTS}
 
 results/%.pdf: results/%.dot
-	timeout 20 dot -Tpdf $< -o $@ || true
+	${TIMEOUT} dot -Tpdf $< -o $@ || true
 
 summary: tests
 	util/summarise ${TESTCASES} >summary
