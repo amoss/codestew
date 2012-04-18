@@ -17,18 +17,50 @@ using namespace std;
    the effort of working out how to map the Region into a Godel numbering that respects
    the structural properties of the graph.
 */
+
+class RegionX
+{
+  Block *block;
+  bool *insts, *vals;
+  int ninsts, nvals;
+public:
+  RegionX(Block *);
+  string repr();
+  string reprValue(uint64);
+  void dot(const char *);
+
+  void mark(Value *);
+  void copyFrom(RegionX *);
+  void unionFrom(RegionX *x);
+  //void markOutputs(Instruction *inst);
+  void markOutputs(int );
+  void markDefinedUses(int);
+  void clear();
+  void expandToDepth(int);
+
+  void invert();
+};
+
+#define ASSERT(COND)
+
+
 class Region
 {
 public:
   Block *block;
   vector<int> insts;
-  vector<int> vals;
+  set<int> vals;
   Region(Block *b, int seed);
 
-  vector<uint64> filterInputs(Instruction *);
-  vector<uint64> filterOutputs(Instruction *);
-  
+  void expandValues();
   bool equality(Region *other);
+
+  string reprInput(uint64);
+
+  vector<string> filterInputs(Instruction *);
+  vector<uint64> filterOutputs(Instruction *);
+
+  
 
   string repr();
 };
