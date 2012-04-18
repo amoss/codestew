@@ -22,6 +22,8 @@ static Opcode armOpcodes[] =
 #define OP_SIGNEXT 4
   Opcode("xor",2,1),    // Word, Word -> Word
 #define OP_XOR 5
+  Opcode("mul",2,1),    // Word, Word -> 2xWord
+#define OP_MUL 6
   Opcode(NULL,-1,-1)
 };
 
@@ -37,6 +39,8 @@ Projection *p = newValSplit(block,W,*this);
       translateUbitAdd(inst, p);
     else if(!strcmp(inst->opcode->name, "xor"))
       translateUbitXor(inst, p);
+    else if(!strcmp(inst->opcode->name, "mul"))
+      translateUbitMul(inst, p);
     else {
       printf("ERROR: Cannot translate\n");
       exit(-1);
@@ -83,6 +87,11 @@ void ArmMachine::translateUbitAdd(Instruction *inst, Projection *p)
       signext( p->target, carry, targetVals[n] );
     }
   }
+}
+
+void ArmMachine::translateUbitMul(Instruction *inst, Projection *p)
+{
+  
 }
 
 void ArmMachine::translateUbitXor(Instruction *inst, Projection *p)
