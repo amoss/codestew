@@ -44,7 +44,7 @@ public:
 #define ASSERT(COND)
 
 
-class Region
+/*class Region
 {
 public:
   Block *block;
@@ -63,7 +63,7 @@ public:
   
 
   string repr();
-};
+};*/
 
 void partition(Block *);
 

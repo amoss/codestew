@@ -200,7 +200,7 @@ void RegionX::invert()
 
 
 
-Region::Region(Block *b, int seed)
+/*Region::Region(Block *b, int seed)
 {
   block = b;
   insts.push_back(seed);
@@ -349,9 +349,9 @@ int j;
     newBin.push_back(newR);
     bins.push_back(newBin);
   }
-}
+}*/
 
-void sizeOne(Block *block)
+/*void sizeOne(Block *block)
 {
 vector<vector<Region> > bins;
 int j;
@@ -374,7 +374,7 @@ int j;
     partitionInsert(bins,newR);
   }
   dumpPartition(block,bins);
-}
+}*/
 
 void partition(Block *block)
 {
@@ -383,7 +383,7 @@ void partition(Block *block)
 RegionX header(block);
   for(int i=0; i<block->numInputs(); i++)
     header.mark( block->getInput(i) );
-  header.expandToDepth(4);
+  header.expandToDepth(2);
 
   printf("RegionX: %s\n", header.repr().c_str() );
   header.dot("crap.dot");
