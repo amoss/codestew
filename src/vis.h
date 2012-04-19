@@ -34,8 +34,10 @@ public:
   bool instReady(uint64 idx);
   bool valFinished(uint64 idx);
   void mark(Value *);
+  void markValue(int);
   void copyFrom(RegionX *);
-  void unionFrom(RegionX *x);
+  void unionFrom(RegionX *);
+  void subtract(RegionX *);      // this = this - other
   //void markOutputs(Instruction *inst);
   void markOutputs(int);
   void markInputs(int);

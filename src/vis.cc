@@ -52,6 +52,12 @@ Instruction *inst = block->getInst(idx);
     vals[ inst->outputs[i]->ref ] = true;
 }
 
+void RegionX::markValue(int idx)
+{
+  ASSERT(v->ref < nvals);
+  vals[ idx ] = true;
+}
+
 void RegionX::mark(Value *v)
 {
   ASSERT(v->ref < nvals);
@@ -135,7 +141,7 @@ void RegionX::markExecutable()
     for(int i=0; i<avail.ninsts; i++)
       if( !insts[i] && avail.instReady(i) )
       {
-        printf("Instruction %u is available\n",i);
+        //printf("Instruction %u is available\n",i);
         avail.markInputs(i);    // Forcibly mark constant inputs, assumes unique-use
         avail.insts[i] = true;
         counter++;
@@ -154,7 +160,7 @@ void RegionX::markExecutable()
         avail.markOutputs(i);
         insts[i] = true;
         avail.insts[i] = false;
-        printf("Retiring instruction %d\n",i);
+        //printf("Retiring instruction %d\n",i);
       }
     }
 
@@ -164,7 +170,7 @@ void RegionX::markExecutable()
     for(int i=0; i<avail.nvals; i++)
       if( avail.vals[i] && valFinished(i) )   // Check instruction markings in this, not avail
       {
-        printf("Finishing value %d\n",i);
+        //printf("Finishing value %d\n",i);
         avail.vals[i] = false;
         vals[i] = true;
       }
@@ -495,17 +501,37 @@ int counter=0;
   return counter;
 }
 
+void RegionX::subtract(RegionX *op)
+{
+  ASSERT(block==op->block);
+  for(int i=0; i<ninsts; i++)
+    if(op->insts[i])
+      insts[i] = false;
+  for(int i=0; i<nvals; i++)
+    if(op->vals[i])
+      vals[i] = false;
+}
+
 void partition(Block *block)
 {
   //sizeOne(block);
   //sizeTwo(block);
 RegionX tt(block);
-  printf("%zu %zu\n", block->numInsts(), block->numValues() );
-  for(int i=0; i<block->numInputs(); i++)
-    tt.mark( block->getInput(i) );
-  printf("%llu %llu\n", tt.markedInsts(), tt.markedVals());
-  tt.markExecutable();
-  printf("%llu %llu\n", tt.markedInsts(), tt.markedVals());
+RegionX allconst(block);
+  allconst.clear();
+  allconst.markExecutable();
+  printf("allconst: %llu %llu\n", allconst.markedInsts(), allconst.markedVals());
+  for(int i=0; i<block->numValues(); i++)
+  {
+    tt.clear();
+    tt.markValue(i);
+    tt.markExecutable();
+    tt.subtract(&allconst);
+    printf("d%d: %llu %llu\n", i, tt.markedInsts(), tt.markedVals());
+    char filename[128];
+    sprintf(filename,"crap-d%d.dot",i);
+    tt.dot(filename);
+  }
 
 RegionX header(block);
   for(int i=0; i<block->numInputs(); i++)
