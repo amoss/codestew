@@ -44,6 +44,7 @@ public:
   void markDefinedUses(int);
   void clear();
   void clearInsts();
+  void fill();
   void markConstants();   // SHOULD DELETE, REDO BELOW
   void expandToDepth(int);
   void markExecutable();

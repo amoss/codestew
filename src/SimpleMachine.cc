@@ -17,13 +17,13 @@ static Opcode opcodes[] =
   Opcode("land",2,1),
 #define OP_LNOT 5
   Opcode("lnot",1,1),
-#define OP_LOR 5
+#define OP_LOR 6
   Opcode("lor",2,1),
-#define OP_EXTRACT 6
+#define OP_EXTRACT 7
   Opcode("extract",3,1),
-#define OP_UPROT 7
+#define OP_UPROT 8
   Opcode("uprot",2,1),
-#define OP_CONCAT 8
+#define OP_CONCAT 9
   Opcode("concat",2,1)
 };
 

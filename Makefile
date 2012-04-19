@@ -7,7 +7,7 @@ TIMEOUT=
 #TIMEOUT=timeout 20
 all: ${COGENS} pycodestew.so
 
-build/%.o: src/%.cc Makefile
+build/%.o: src/%.cc src/%.h Makefile
 	g++ ${DEBUG} -c $< -o $@
 
 build/%: cogens/%.cc ${OBJS}

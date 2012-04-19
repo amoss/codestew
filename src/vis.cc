@@ -1,4 +1,6 @@
 #include "vis.h"
+#include <iostream>
+using namespace std;
 
 // Set theoretic operations:
 //    intersection
@@ -13,6 +15,14 @@ RegionX::RegionX(Block *b)
   insts = new bool[ninsts];
   vals  = new bool[nvals];
   clear();
+}
+
+void RegionX::fill()
+{
+  for(int i=0; i<ninsts; i++)
+    insts[i] = true;
+  for(int i=0; i<nvals; i++)
+    vals[i] = true;
 }
 
 void RegionX::clear()
@@ -261,10 +271,10 @@ char result[64];
 
 string RegionX::repr()
 {
-char result[16384] = {0};
+ostringstream result;
   for(int i=0; i<nvals; i++)
     if( vals[i] )
-      sprintf(result+strlen(result),"d%u ",i);
+      result << "d" << i << " ";
 
   for(int i=0; i<ninsts; i++)
   {
@@ -273,27 +283,27 @@ char result[16384] = {0};
       Instruction *inst = block->getInst(i);
       if( inst->inputs.size()>0 )
       {
-        sprintf(result+strlen(result), "%s", reprValue(inst->inputs[0]->ref).c_str()); 
+        result << reprValue(inst->inputs[0]->ref);
         for(int j=1; j<inst->inputs.size(); j++)
-          sprintf(result+strlen(result), ",%s", reprValue(inst->inputs[j]->ref).c_str());
+          result << "," << reprValue(inst->inputs[j]->ref).c_str();
       }
       else
-        sprintf(result+strlen(result), "()");
+        result << "()";
 
-      sprintf(result+strlen(result),"->i%u->",i);
+      result << "->i" << i << "->";
 
       if( inst->outputs.size()>0 )
       {
-        sprintf(result+strlen(result), "%s", reprValue(inst->outputs[0]->ref).c_str()); 
+        result << reprValue(inst->outputs[0]->ref).c_str(); 
         for(int j=1; j<inst->outputs.size(); j++)
-          sprintf(result+strlen(result), ",%s", reprValue(inst->outputs[j]->ref).c_str());
+          result << "," << reprValue(inst->outputs[j]->ref).c_str();
       }
       else
-        sprintf(result+strlen(result), "()");
-      sprintf(result+strlen(result), " ");
+        result << "()";
+      result << endl;
     }
   }
-  return string(result);
+  return result.str();
 }
 
 void RegionX::invert()
@@ -527,21 +537,29 @@ RegionX allconst(block);
     tt.markValue(i);
     tt.markExecutable();
     tt.subtract(&allconst);
-    printf("d%d: %llu %llu\n", i, tt.markedInsts(), tt.markedVals());
+    printf("d%d: %llu %llu  %s\n", i, tt.markedInsts(), tt.markedVals(), block->getValue(i)->repr().c_str());
     char filename[128];
     sprintf(filename,"crap-d%d.dot",i);
     tt.dot(filename);
   }
 
-RegionX header(block);
+RegionX everything(block);
+  for(int i=0; i<block->numInputs(); i++)
+    everything.mark( block->getInput(i) );
+  everything.markConstants();
+  everything.expandToDepth(64);
+  everything.dot("crap.dot");
+  cout << everything.repr() << endl;
+
+/*RegionX header(block);
   for(int i=0; i<block->numInputs(); i++)
     header.mark( block->getInput(i) );
-  header.expandToDepth(2);
+  header.expandToDepth(6);
 
   printf("RegionX: %s\n", header.repr().c_str() );
   header.dot("crap.dot");
   header.invert();
-  header.dot("crap2.dot");
+  header.dot("crap2.dot");*/
 }
 // DFS (bounded)
 // dominated regions

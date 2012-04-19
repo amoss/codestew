@@ -29,6 +29,7 @@ int main(int argc, char **argv)
     return -1;
   }
   printf("Cogen built and validated.\n");
+  partition(&block);
 
   if(!strcmp("src",argv[2])) {
     std::string newbase    = std::string(argv[1]) + "-orig";
@@ -40,7 +41,6 @@ int main(int argc, char **argv)
     block.dot(newbaseDot.c_str());
     printf("Success\n");
 
-    partition(&block);
     return 0;
   }
 

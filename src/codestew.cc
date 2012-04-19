@@ -20,6 +20,8 @@ char temp[80];
     case Type::UBITS:
       sprintf(temp,"Ubits<%llu>",size);
       return std::string(temp);  
+    case Type::INT:
+      return std::string("Int");
     default:
       return std::string("UNKNOWN");
   }
@@ -62,7 +64,7 @@ Value *Instruction::addOutput( Value *val)
 std::string Instruction::repr()
 {
 char buffer[100];
-  sprintf(buffer,"<Inst %llu in=%zu out=%zu>",ref,inputs.size(),outputs.size());
+  sprintf(buffer,"<Inst %llu %s in=%zu out=%zu>",ref,opcode->name, inputs.size(),outputs.size());
   return std::string(buffer);
 }
 
@@ -71,6 +73,24 @@ Value::Value(Type *type)
   this->type = type;
   def = NULL;
   this->constant = NULL;
+}
+
+std::string Value::repr()
+{
+char result[128];
+  if(constant!=NULL)
+    switch(type->kind)
+    {
+      case Type::UBITS:
+        sprintf(result, "v%u [..] : %s", ref, type->repr().c_str());
+        break;
+      case Type::INT:
+        sprintf(result, "v%u #%d : %s", ref, ((IntConstant*)constant)->value, type->repr().c_str());
+        break;
+    }
+  else
+    sprintf(result, "v%u : %s", ref, type->repr().c_str());
+  return std::string(result);
 }
 
 Value *Block::input(Type *type)

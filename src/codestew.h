@@ -76,6 +76,7 @@ public:
   Value(Type *type);
   bool defined() { return def!=NULL; }
   void *constant;
+  std::string repr();
 };
 
 class Machine;
@@ -108,7 +109,7 @@ public:
   size_t numValues() { return values.size(); }
   Value* getValue(int index) { return values[index]; }
   size_t numInsts()  { return insts.size(); }
-  Instruction *getInst(int index) { return insts[index]; }
+  Instruction *getInst(int index) { /*printf("%d/%d\n",index,insts.size()); printf("%llu\n",insts[index]);*/ return insts[index]; }
   std::vector<Instruction*> topSort();
 
   std::string dump();
