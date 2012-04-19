@@ -13,12 +13,6 @@ RegionX::RegionX(Block *b)
   insts = new bool[ninsts];
   vals  = new bool[nvals];
   clear();
-  for(int i=0; i<nvals; i++)
-  {
-    Value *v = block->getValue(i);
-    if(v->constant!=NULL)
-      vals[i] = true;
-  }
 }
 
 void RegionX::clear()
@@ -29,6 +23,12 @@ void RegionX::clear()
     vals[i] = false;
 }
 
+void RegionX::clearInsts()
+{
+  for(int i=0; i<ninsts; i++)
+    insts[i] = false;
+}
+
 void RegionX::copyFrom(RegionX *src)
 {
   ASSERT(src->block == block);
@@ -36,6 +36,13 @@ void RegionX::copyFrom(RegionX *src)
     insts[i] = src->insts[i];
   for(int i=0; i<nvals; i++)
     vals[i] = src->vals[i];
+}
+
+void RegionX::markInputs(int idx)
+{
+Instruction *inst = block->getInst(idx);
+  for(int i=0; i<inst->inputs.size(); i++)
+    vals[ inst->inputs[i]->ref ] = true;
 }
 
 void RegionX::markOutputs(int idx)
@@ -82,10 +89,104 @@ void RegionX::unionFrom(RegionX *other)
       vals[i] = true;
 }
 
+/* An instruction is ready for execution if all of its inputs are
+   available. Constants are always available, and data is considered
+   available if it is within the marked region.
+*/
+bool RegionX::instReady(uint64 idx)
+{
+int avail=0;
+Instruction *inst = block->getInst(idx);
+  for(int i=inst->inputs.size()-1; i>=0; --i)
+    if( inst->inputs[i]->constant!=NULL ||
+        vals[ inst->inputs[i]->ref ] )
+      avail++;
+  return avail==inst->inputs.size();
+}
+
+/* A value is finished if every instruction using it is within the marked
+   region.
+*/
+bool RegionX::valFinished(uint64 idx)
+{
+int uses=0;
+Value *val = block->getValue(idx);
+  for(int i=val->uses.size()-1; i>=0; --i)
+    if( insts[val->uses[i]->ref] )
+      uses++;
+  return uses==val->uses.size();
+}
+
+
+/* This relation is somewhere between reachability and dominance */
+void RegionX::markExecutable()
+{
+  RegionX avail(block);
+  avail.copyFrom(this);
+  avail.clearInsts();
+
+  while(true)
+  {
+    // ASSERT(no marked instructions in avail)
+    // ASSERT(each instruction should trigger at most once)
+    // Instructions are marked and removed each iteration, this is the execution
+    // frontier sweeping across the graph.
+    int counter=0;
+    for(int i=0; i<avail.ninsts; i++)
+      if( !insts[i] && avail.instReady(i) )
+      {
+        printf("Instruction %u is available\n",i);
+        avail.markInputs(i);    // Forcibly mark constant inputs, assumes unique-use
+        avail.insts[i] = true;
+        counter++;
+      }
+    if(counter==0)      // Either we completed the graph, or it deadlocked.
+      return;
+
+
+    // Generate fresh data (mark data produced by instructions in the frontier
+    // that is not already marked). Retire each instruction by copying it from
+    // the avail region to this.
+    for(int i=0; i<avail.ninsts; i++)
+    {
+      if( avail.insts[i] )
+      {
+        avail.markOutputs(i);
+        insts[i] = true;
+        avail.insts[i] = false;
+        printf("Retiring instruction %d\n",i);
+      }
+    }
+
+
+    // remove completed data
+    // ASSERT( the instruction set in this and avail are disjoint )
+    for(int i=0; i<avail.nvals; i++)
+      if( avail.vals[i] && valFinished(i) )   // Check instruction markings in this, not avail
+      {
+        printf("Finishing value %d\n",i);
+        avail.vals[i] = false;
+        vals[i] = true;
+      }
+  }
+
+}
+
+void RegionX::markConstants()
+{
+  for(int i=0; i<nvals; i++)
+  {
+    Value *v = block->getValue(i);
+    if(v->constant!=NULL)
+      vals[i] = true;
+  }
+}
+
 void RegionX::expandToDepth(int n)
 {
 RegionX done(block);
   done.copyFrom(this);
+  markConstants();
   //printf("Done: %s\n", done.repr().c_str());
 
   for(int step=0; step<n; step++)
@@ -376,10 +477,36 @@ int j;
   dumpPartition(block,bins);
 }*/
 
+int RegionX::markedVals()
+{
+int counter=0;
+  for(int i=0; i<nvals; i++)
+    if( vals[i] )
+      counter++;
+  return counter;
+}
+
+int RegionX::markedInsts()
+{
+int counter=0;
+  for(int i=0; i<ninsts; i++)
+    if( insts[i] )
+      counter++;
+  return counter;
+}
+
 void partition(Block *block)
 {
   //sizeOne(block);
   //sizeTwo(block);
+RegionX tt(block);
+  printf("%zu %zu\n", block->numInsts(), block->numValues() );
+  for(int i=0; i<block->numInputs(); i++)
+    tt.mark( block->getInput(i) );
+  printf("%llu %llu\n", tt.markedInsts(), tt.markedVals());
+  tt.markExecutable();
+  printf("%llu %llu\n", tt.markedInsts(), tt.markedVals());
+
 RegionX header(block);
   for(int i=0; i<block->numInputs(); i++)
     header.mark( block->getInput(i) );

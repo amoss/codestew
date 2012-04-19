@@ -27,16 +27,24 @@ public:
   RegionX(Block *);
   string repr();
   string reprValue(uint64);
+  int markedInsts();
+  int markedVals();
   void dot(const char *);
 
+  bool instReady(uint64 idx);
+  bool valFinished(uint64 idx);
   void mark(Value *);
   void copyFrom(RegionX *);
   void unionFrom(RegionX *x);
   //void markOutputs(Instruction *inst);
-  void markOutputs(int );
+  void markOutputs(int);
+  void markInputs(int);
   void markDefinedUses(int);
   void clear();
+  void clearInsts();
+  void markConstants();   // SHOULD DELETE, REDO BELOW
   void expandToDepth(int);
+  void markExecutable();
 
   void invert();
 };
