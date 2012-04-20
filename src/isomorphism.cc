@@ -67,19 +67,30 @@ void isoEntry(Block *block)
 {
 vector<vector<Value*> > bins = blockDataPartition(block);
 
+  for(int i=0; i<bins.size();)
+  {
+    if(bins[i].size() < 5)
+      bins.erase( bins.begin()+i );
+    else
+      i++;
+  }
+
   for(int i=0; i<bins.size(); i++)
   {
-    if(bins[i].size()>5)
-    {
       printf("Bin %d\n", i, bins[i][0]->repr().c_str());
       for(int j=0; j<bins[i].size(); j++)
       {
         Value *v = bins[i][j];
-        printf("  %s ", v->repr().c_str());
-        for(int k=0; k<v->uses.size(); k++)
-          printf("%s ",v->uses[k]->repr().c_str());
-        printf("\n");
+        printf("  %s\n", v->repr().c_str());
+        vector<vector<Instruction *> > useBins =
+                partition<Instruction*>(v->uses, isoInsts);
+        for(int k=0; k<useBins.size(); k++)
+        {
+          printf("    ");
+          for(int l=0; l<useBins[k].size(); l++)
+            printf("%s ",useBins[k][l]->repr().c_str());
+          printf("\n");
+        }
       }
-    }
   }
 }
