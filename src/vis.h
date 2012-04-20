@@ -31,8 +31,11 @@ public:
   int markedVals();
   void dot(const char *);
 
-  bool instReady(uint64 idx);
-  bool valFinished(uint64 idx);
+  bool instReady(uint64);
+  bool valFinished(uint64);
+  bool isoValues(int,int);
+  bool isoInsts(int,int);
+
   void mark(Value *);
   void markValue(int);
   void copyFrom(RegionX *);

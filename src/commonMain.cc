@@ -2,6 +2,7 @@
 #include "arm.h"
 #include "x86.h"
 #include "vis.h"
+#include "isomorphism.h"
 
 bool flag(const char *flag, int argc, char **argv)
 {
@@ -29,7 +30,10 @@ int main(int argc, char **argv)
     return -1;
   }
   printf("Cogen built and validated.\n");
+
+  // Pissing around developing visualisation stuff
   partition(&block);
+  isoEntry(&block);
 
   if(!strcmp("src",argv[2])) {
     std::string newbase    = std::string(argv[1]) + "-orig";

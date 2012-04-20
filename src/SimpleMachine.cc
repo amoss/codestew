@@ -175,7 +175,9 @@ bool SimpleMachine::valid( Block *block )
            (inst->inputs[0]->type->size == inst->outputs[0]->type->size ||
             inst->inputs[0]->type->size == inst->outputs[0]->type->size-1) ))
       {
-        printf("SimpleMachine::add ubits(%u) ubits(%u) -> ubits(%u) undefined\n");
+        printf("SimpleMachine::add ubits(%u) ubits(%u) -> ubits(%u) undefined\n",
+               inst->inputs[0]->type->size, inst->inputs[1]->type->size,
+               inst->outputs[0]->type->size);
         return false;
       }
     }

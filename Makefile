@@ -2,11 +2,14 @@ DEBUG=-g
 TESTCASES=add64 add128 add256 add512 xor64 xor128 xor256 xor512 mul64 md5
 COGENS=$(foreach tc, ${TESTCASES}, build/$(tc))
 OBJS=build/codestew.o build/SimpleMachine.o build/arm.o build/x86.o build/addProj.o \
-     build/commonMain.o build/vis.o
+     build/commonMain.o build/vis.o build/isomorphism.o
 TIMEOUT=
 #TIMEOUT=timeout 20
 all: ${COGENS} pycodestew.so
 
+# Special case as no matching header file
+build/commonMain.o: src/commonMain.cc src/arm.h src/x86.h src/vis.h src/isomorphism.h Makefile
+	g++ ${DEBUG} -c src/commonMain.cc -o build/commonMain.o
 build/%.o: src/%.cc src/%.h Makefile
 	g++ ${DEBUG} -c $< -o $@
 

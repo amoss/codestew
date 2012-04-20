@@ -1,4 +1,5 @@
 #include "vis.h"
+#include "isomorphism.h"
 #include <iostream>
 using namespace std;
 
@@ -196,6 +197,36 @@ void RegionX::markConstants()
     if(v->constant!=NULL)
       vals[i] = true;
   }
+}
+
+bool RegionX::isoValues(int valA, int valB)
+{
+Value *a = block->getValue(valA);
+Value *b = block->getValue(valB);
+  if(a->type != b->type)
+    return false;
+  if(a->uses.size() != b->uses.size())
+    return false;
+  return true;
+}
+
+bool RegionX::isoInsts(int valA, int valB)
+{
+Instruction *a = block->getInst(valA);
+Instruction *b = block->getInst(valB);
+  if(a->opcode != b->opcode)
+    return false;
+  if(a->inputs.size() != b->inputs.size())
+    return false;
+  if(a->outputs.size() != b->outputs.size())
+    return false;
+  for(int i=0; i<a->inputs.size(); i++)
+    if(a->inputs[i]->type != b->inputs[i]->type)
+      return false;
+  for(int i=0; i<a->outputs.size(); i++)
+    if(a->outputs[i]->type != b->outputs[i]->type)
+      return false;
+  return true;
 }
 
 void RegionX::expandToDepth(int n)
@@ -543,23 +574,11 @@ RegionX allconst(block);
     tt.dot(filename);
   }
 
-RegionX everything(block);
-  for(int i=0; i<block->numInputs(); i++)
-    everything.mark( block->getInput(i) );
-  everything.markConstants();
-  everything.expandToDepth(64);
-  everything.dot("crap.dot");
-  cout << everything.repr() << endl;
-
-/*RegionX header(block);
+RegionX header(block);
   for(int i=0; i<block->numInputs(); i++)
     header.mark( block->getInput(i) );
-  header.expandToDepth(6);
-
-  printf("RegionX: %s\n", header.repr().c_str() );
+  header.markConstants();
+  header.expandToDepth(64);
   header.dot("crap.dot");
-  header.invert();
-  header.dot("crap2.dot");*/
+  //cout << header.repr() << endl;
 }
-// DFS (bounded)
-// dominated regions
