@@ -63,6 +63,47 @@ vector<Value*> values;
   return partition<Value*>(values, isoValues);
 }
 
+
+class Canon
+{
+public:
+  vector<Value*> vals;
+  vector<Instruction*> definite;
+  vector< vector<Instruction*> > possibles;
+
+  // Match? -> yes, no, so-far...
+};
+
+// Compare by shape
+// The second loop to check element sizes is currently invalid as the blocks within the
+// partition stored in possibles are currently unsorted. They need to be sorted into
+// some arbitrary, but canonical order.
+bool eqPosShapes( Canon c1, Canon c2 )
+{
+  if( c1.possibles.size() != c2.possibles.size() )
+    return false;
+  for(int i=0; i<c1.possibles.size(); i++)
+  {
+    if(c1.possibles[i].size() != c2.possibles[i].size())
+      return false;
+  }
+  return true;
+}
+
+class CanonSet
+{
+public:
+  vector<Canon> matches;
+
+  vector< vector<Canon> > expand()
+  {
+    for(int i=0; i<matches.size(); i++)
+      matches[i].possibles = partition<Instruction*>(matches[i].vals[0]->uses, isoInsts);
+    return partition<Canon>(matches,eqPosShapes);
+  }
+};
+
+
 void isoEntry(Block *block)
 {
 vector<vector<Value*> > bins = blockDataPartition(block);
@@ -75,15 +116,48 @@ vector<vector<Value*> > bins = blockDataPartition(block);
       i++;
   }
 
+vector<CanonSet> canons;
   for(int i=0; i<bins.size(); i++)
   {
-      printf("Bin %d\n", i, bins[i][0]->repr().c_str());
-      for(int j=0; j<bins[i].size(); j++)
+    CanonSet cs;
+    for(int j=0; j<bins[i].size(); j++)
+    {
+      Canon c;
+      c.vals.push_back( bins[i][j] );
+      cs.matches.push_back(c);
+    }
+    canons.push_back(cs);
+  }
+
+  for(int i=0; i<canons.size();)
+  {
+    vector< vector<Canon> > split = canons[i].expand();
+    if( split.size()>1 )
+    {
+      // Bit inefficient as they will be processed again but are all homogeneous
+      canons.erase( canons.begin()+i );
+      for(int j=0; j<split.size(); j++)
       {
-        Value *v = bins[i][j];
+        CanonSet cs;
+        cs.matches = split[j];
+        canons.push_back(cs);
+      }
+    }
+    else
+      i++;
+  }
+
+  for(int i=0; i<canons.size(); i++)
+  {
+      printf("Bin %d\n", i);
+      for(int j=0; j<canons[i].matches.size(); j++)
+      {
+        Value *v = canons[i].matches[j].vals[0];
         printf("  %s\n", v->repr().c_str());
-        vector<vector<Instruction *> > useBins =
-                partition<Instruction*>(v->uses, isoInsts);
+        //vector<vector<Instruction *> > useBins =
+        //        partition<Instruction*>(v->uses, isoInsts);
+        vector<vector<Instruction*> > &useBins = canons[i].matches[j].possibles;
+        //for(int k=0; k<canons[i].matches[j].possibles.size(); k++)
         for(int k=0; k<useBins.size(); k++)
         {
           printf("    ");
