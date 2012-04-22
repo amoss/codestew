@@ -74,6 +74,17 @@ public:
   // Match? -> yes, no, so-far...
 };
 
+bool orderPos(vector<Instruction*> a, vector<Instruction*> b)
+{
+  if( a[0]->opcode < b[0]->opcode )
+    return true;
+  if( a[0]->opcode > b[0]->opcode )
+    return false;
+  if( a.size() < b.size() )
+    return true;
+  return false;
+}
+
 // Compare by shape
 // The second loop to check element sizes is currently invalid as the blocks within the
 // partition stored in possibles are currently unsorted. They need to be sorted into
@@ -98,7 +109,10 @@ public:
   vector< vector<Canon> > expand()
   {
     for(int i=0; i<matches.size(); i++)
+    {
       matches[i].possibles = partition<Instruction*>(matches[i].vals[0]->uses, isoInsts);
+      sort(matches[i].possibles.begin(), matches[i].possibles.end(), orderPos);
+    }
     return partition<Canon>(matches,eqPosShapes);
   }
 };
@@ -108,6 +122,7 @@ void isoEntry(Block *block)
 {
 vector<vector<Value*> > bins = blockDataPartition(block);
 
+// Building vector bins
   for(int i=0; i<bins.size();)
   {
     if(bins[i].size() < 5)
@@ -116,6 +131,7 @@ vector<vector<Value*> > bins = blockDataPartition(block);
       i++;
   }
 
+// Init from vector bins
 vector<CanonSet> canons;
   for(int i=0; i<bins.size(); i++)
   {
@@ -129,6 +145,7 @@ vector<CanonSet> canons;
     canons.push_back(cs);
   }
 
+// Splitting step -> pushed into search process eventually
   for(int i=0; i<canons.size();)
   {
     vector< vector<Canon> > split = canons[i].expand();
@@ -146,6 +163,15 @@ vector<CanonSet> canons;
     else
       i++;
   }
+
+  // Push singleton blocks from possibles to definites...
+  // Can also use ordering of outputs in new definites to push values as well...
+  for(int i=0; i<canons.size(); i++)
+  {
+    
+  }
+
+  // Need to convert a Canon into a Region...
 
   for(int i=0; i<canons.size(); i++)
   {
