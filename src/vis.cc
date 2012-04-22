@@ -238,8 +238,6 @@ RegionX done(block);
 
   for(int step=0; step<n; step++)
   {
-    printf("Step %d\n",step);
-
     for(int i=0; i<done.nvals; i++)
       if( done.vals[i])
         done.markDefinedUses(i);

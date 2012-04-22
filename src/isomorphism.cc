@@ -71,6 +71,17 @@ public:
   vector<Instruction*> definite;
   vector< vector<Instruction*> > possibles;
 
+  void confirm()
+  {
+    for(int i=0; i<possibles.size(); )
+      if(possibles[i].size()==1)
+      {
+        definite.push_back(possibles[i][0]);
+        possibles.erase( possibles.begin()+i );
+      }
+      else
+        i++;
+  }
   // Match? -> yes, no, so-far...
 };
 
@@ -101,89 +112,134 @@ bool eqPosShapes( Canon c1, Canon c2 )
   return true;
 }
 
-class CanonSet
+// Contains a set of Canon object - each represents a region in the same block and
+// a canonisation of the vertices to allow the isomorphic mapping between them.
+class Isomorphism
 {
 public:
   vector<Canon> matches;
 
-  vector< vector<Canon> > expand()
+  // Wrap each Value* seed as a definite data vertex inside a Canon
+  void initByValues(vector<Value*> eqClass)
+  {
+    for(int i=0; i<eqClass.size(); i++)
+    {
+      Canon c;
+      c.vals.push_back( eqClass[i] );
+      matches.push_back(c);
+    }
+  }
+
+  // We are in a state where the Isomorphism was computed to match Values locally,
+  // now we extend a step by considering the set of using Instructions and partitioning
+  // according to a local equality relation on them. We not split on the Instructions
+  // directly as there is an unknown permutation over their ordering. Instead we split
+  // on their distribution according to the equality relation as a conservative
+  // approximation of isomorphism - i.e. if the distribution differs then the two 
+  // regions are definitely not isomorphic after expansion. If the distributions match
+  // then they may be isomorphic...
+  vector<Isomorphism> expand()
   {
     for(int i=0; i<matches.size(); i++)
     {
       matches[i].possibles = partition<Instruction*>(matches[i].vals[0]->uses, isoInsts);
       sort(matches[i].possibles.begin(), matches[i].possibles.end(), orderPos);
     }
-    return partition<Canon>(matches,eqPosShapes);
+    vector< vector<Canon> > split = partition<Canon>(matches,eqPosShapes);
+    vector<Isomorphism> result;
+    for(int i=0; i<split.size(); i++)
+    {
+      Isomorphism iso;
+      iso.matches = split[i];
+      result.push_back(iso);
+    }
+    return result; 
+  }
+
+  // Find singeleton blocks of possible instructions - as these are singleton they map
+  // to exactly one instruction in each Canon within the Isomorphism. Move them into
+  // the definite array so that they all have matching indices (the canonical map to
+  // the isomorphism). Assumes the Isomorphism is currently valid: each Canon has 
+  // identical structure upto and including the layout of blocks inside the possibles
+  // partition. This implies that calling confirm() on each Canon will produce an 
+  // equivalent transformation.
+  void confirm()
+  {
+    for(int i=0; i<matches.size(); i++)
+      matches[i].confirm();
+    
   }
 };
 
+// Use the local equality function over Values in the supplied block to split
+// them into equality classes, each class represents a set of Values that look locally
+// similar (type and out-degree) wrapped in Canon objects.
+vector<Isomorphism> seedByValues(Block *block)
+{
+vector<Isomorphism> result;
+  // TODO: Maybe pull blockDataPartition inside here?
+  vector<vector<Value*> > seeds = blockDataPartition(block);
+  for(int i=0; i<seeds.size(); i++)
+  {
+    Isomorphism valEqClass;
+    valEqClass.initByValues( seeds[i] );
+    result.push_back(valEqClass);
+  }
+  return result;
+}
+
+// There are two sensible measures of size for an Isomorphism:
+//   the number of regions it maps onto (we term commonality)
+//   the number of vertices inside the region (we term population)
+// To avoid filtering by one of the sizes pass it as -1
+void threshold( vector<Isomorphism> &isos, int minCommon, int minPop)
+{
+  for(int i=0; i<isos.size();)
+  {
+    if(int(isos[i].matches.size()) < minCommon || 
+       int(isos[i].matches[0].vals.size()) < minPop )
+      isos.erase( isos.begin()+i );
+    else
+      i++;
+  }
+}
 
 void isoEntry(Block *block)
 {
-vector<vector<Value*> > bins = blockDataPartition(block);
+vector<Isomorphism> isos = seedByValues(block);
 
-// Building vector bins
-  for(int i=0; i<bins.size();)
-  {
-    if(bins[i].size() < 5)
-      bins.erase( bins.begin()+i );
-    else
-      i++;
-  }
-
-// Init from vector bins
-vector<CanonSet> canons;
-  for(int i=0; i<bins.size(); i++)
-  {
-    CanonSet cs;
-    for(int j=0; j<bins[i].size(); j++)
-    {
-      Canon c;
-      c.vals.push_back( bins[i][j] );
-      cs.matches.push_back(c);
-    }
-    canons.push_back(cs);
-  }
+  printf("%zu blocks\n", isos.size());
+  // Ignore uncommon mappings to make dev/debug easier
+  threshold(isos, 5, -1);
+  printf("%zu blocks\n", isos.size());
 
 // Splitting step -> pushed into search process eventually
-  for(int i=0; i<canons.size();)
+  vector<Isomorphism> newSplits;
+  for(int i=0; i<isos.size(); i++)
   {
-    vector< vector<Canon> > split = canons[i].expand();
-    if( split.size()>1 )
-    {
-      // Bit inefficient as they will be processed again but are all homogeneous
-      canons.erase( canons.begin()+i );
-      for(int j=0; j<split.size(); j++)
-      {
-        CanonSet cs;
-        cs.matches = split[j];
-        canons.push_back(cs);
-      }
-    }
-    else
-      i++;
+    vector<Isomorphism> split = isos[i].expand();
+    newSplits.insert( newSplits.end(), split.begin(), split.end() );
   }
+  isos = newSplits;
+
+  printf("%zu blocks\n", isos.size());
 
   // Push singleton blocks from possibles to definites...
+  for(int i=0; i<isos.size(); i++)
+    isos[i].confirm();
+
   // Can also use ordering of outputs in new definites to push values as well...
-  for(int i=0; i<canons.size(); i++)
-  {
-    
-  }
 
   // Need to convert a Canon into a Region...
 
-  for(int i=0; i<canons.size(); i++)
+  for(int i=0; i<isos.size(); i++)
   {
       printf("Bin %d\n", i);
-      for(int j=0; j<canons[i].matches.size(); j++)
+      for(int j=0; j<isos[i].matches.size(); j++)
       {
-        Value *v = canons[i].matches[j].vals[0];
+        Value *v = isos[i].matches[j].vals[0];
         printf("  %s\n", v->repr().c_str());
-        //vector<vector<Instruction *> > useBins =
-        //        partition<Instruction*>(v->uses, isoInsts);
-        vector<vector<Instruction*> > &useBins = canons[i].matches[j].possibles;
-        //for(int k=0; k<canons[i].matches[j].possibles.size(); k++)
+        vector<vector<Instruction*> > &useBins = isos[i].matches[j].possibles;
         for(int k=0; k<useBins.size(); k++)
         {
           printf("    ");
