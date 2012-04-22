@@ -77,6 +77,11 @@ public:
       if(possibles[i].size()==1)
       {
         definite.push_back(possibles[i][0]);
+        // When we confirm an instruction, it's outputs are strictly ordered so can
+        // be confirmed as well. As the block is SSA each confirmed Value only has
+        // an incoming edge from the confirmed instruction.
+        for(int j=0; j<possibles[i][0]->outputs.size(); j++)
+          vals.push_back(possibles[i][0]->outputs[j]);
         possibles.erase( possibles.begin()+i );
       }
       else
@@ -169,6 +174,26 @@ public:
       matches[i].confirm();
     
   }
+
+  vector<RegionX> regions(Block *block)
+  {
+    vector<RegionX> result;
+    for(int i=0; i<matches[0].vals.size(); i++)
+    {
+      RegionX r = RegionX(block);
+      for(int j=0; j<matches.size(); j++)
+        r.mark(matches[j].vals[i]);
+      result.push_back(r);
+    }
+    for(int i=0; i<matches[0].definite.size(); i++)
+    {
+      RegionX r = RegionX(block);
+      for(int j=0; j<matches.size(); j++)
+        r.mark(matches[j].definite[i]);
+      result.push_back(r);
+    }
+    return result;
+  }
 };
 
 // Use the local equality function over Values in the supplied block to split
@@ -232,13 +257,16 @@ vector<Isomorphism> isos = seedByValues(block);
 
   // Need to convert a Canon into a Region...
 
-  for(int i=0; i<isos.size(); i++)
+  //for(int i=0; i<isos.size(); i++)
+  int i=2;
   {
       printf("Bin %d\n", i);
       for(int j=0; j<isos[i].matches.size(); j++)
       {
         Value *v = isos[i].matches[j].vals[0];
         printf("  %s\n", v->repr().c_str());
+        for(int k=0; k<isos[i].matches[j].definite.size(); k++)
+          printf("  %d: %s\n", k, isos[i].matches[j].definite[k]->repr().c_str());
         vector<vector<Instruction*> > &useBins = isos[i].matches[j].possibles;
         for(int k=0; k<useBins.size(); k++)
         {
@@ -249,4 +277,24 @@ vector<Isomorphism> isos = seedByValues(block);
         }
       }
   }
+
+  FILE *f = fopen("crap2.dot","wt");
+  RegionX remainder(block);
+  for(int i=0; i<block->numInputs(); i++)
+    remainder.mark( block->getInput(i) );
+  remainder.markConstants();
+  remainder.expandToDepth(64);
+  fprintf(f,"digraph {\n");
+  vector<RegionX> isoPop = isos[2].regions(block);
+  for(int i=0; i<isoPop.size(); i++)
+  {
+    char colour[32];
+    sprintf(colour,"/ylorrd9/%d",i+1);
+    isoPop[i].intersectFrom(&remainder);
+    isoPop[i].dotColourSet(f,colour);
+    remainder.subtract(&isoPop[i]);
+  }
+  remainder.dotColourSet(f,"lightskyblue");
+  fprintf(f,"}\n");
+  fclose(f);
 }

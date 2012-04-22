@@ -75,6 +75,12 @@ void RegionX::mark(Value *v)
   vals[ v->ref ] = true;
 }
 
+void RegionX::mark(Instruction *i)
+{
+  ASSERT(i->ref < ninsts);
+  insts[ i->ref ] = true;
+}
+
 void RegionX::markDefinedUses(int idx)
 {
 Value *val = block->getValue(idx);
@@ -104,6 +110,17 @@ void RegionX::unionFrom(RegionX *other)
   for(int i=0; i<nvals; i++)
     if(other->vals[i])
       vals[i] = true;
+}
+
+void RegionX::intersectFrom(RegionX *other)
+{
+  ASSERT( other->block == block );
+  for(int i=0; i<ninsts; i++)
+    if(!other->insts[i])
+      insts[i] = false;
+  for(int i=0; i<nvals; i++)
+    if(!other->vals[i])
+      vals[i] = false;
 }
 
 /* An instruction is ready for execution if all of its inputs are
@@ -265,7 +282,7 @@ FILE *f = fopen(filename,"w");
   fprintf(f,"input [shape=none];\noutput [shape=none];\n");
   for(int i=0; i<nvals; i++)
     if( vals[i] )
-      fprintf(f,"v%d [label=\"%d : %s\"];\n", i, i, 
+      fprintf(f,"v%d [color=\"/ylorrd9/3\",label=\"%d : %s\"];\n", i, i, 
                 block->getValue(i)->type->repr().c_str());
   for(int i=0; i<block->numInputs(); i++)
     if( vals[ block->getInput(i)->ref ] )
@@ -286,6 +303,27 @@ FILE *f = fopen(filename,"w");
   }
   fprintf(f,"}");
   fclose(f);
+}
+
+void RegionX::dotColourSet(FILE *f, char *name)
+{
+  for(int i=0; i<nvals; i++)
+    if( vals[i] )
+      fprintf(f,"v%d [style=filled,color=\"%s\",label=\"%d : %s\"];\n", i, name, i, 
+                block->getValue(i)->type->repr().c_str());
+
+  for(int i=0; i<ninsts; i++)
+  {
+    if(!insts[i])
+      continue;
+    Instruction *inst = block->getInst(i);
+    fprintf(f,"i%d [shape=rect,style=filled,color=\"%s\",label=\"%s\"];\n", 
+              i, name, inst->opcode->name);
+    for(int j=0; j<inst->inputs.size(); j++)
+      fprintf(f,"v%llu -> i%d;\n", inst->inputs[j]->ref, i);
+    for(int j=0; j<inst->outputs.size(); j++)
+      fprintf(f,"i%d -> v%llu;\n", i, inst->outputs[j]->ref);
+  }
 }
 
 string RegionX::reprValue(uint64 idx)

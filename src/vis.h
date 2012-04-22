@@ -30,6 +30,7 @@ public:
   int markedInsts();
   int markedVals();
   void dot(const char *);
+  void dotColourSet(FILE *,char *);
 
   bool instReady(uint64);
   bool valFinished(uint64);
@@ -37,9 +38,11 @@ public:
   bool isoInsts(int,int);
 
   void mark(Value *);
+  void mark(Instruction *);
   void markValue(int);
   void copyFrom(RegionX *);
   void unionFrom(RegionX *);
+  void intersectFrom(RegionX *);
   void subtract(RegionX *);      // this = this - other
   //void markOutputs(Instruction *inst);
   void markOutputs(int);
