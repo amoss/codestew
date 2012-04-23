@@ -305,6 +305,17 @@ public:
         result.push_back(r);
       }
     }
+    for(int i=0; i<regions[0].sections.size(); i++)
+    {
+      for(int j=0; j<regions[0].sections[i].possibles.size(); j++)
+      {
+        RegionX r = RegionX(block);
+        for(int k=0; k<regions.size(); k++)
+          for(int l=0; l<regions[0].sections[i].possibles[j].size(); l++)
+            r.mark(regions[k].sections[i].possibles[j][l]);
+        result.push_back(r);
+      }
+    }
     return result;
   }
 
@@ -375,6 +386,7 @@ vector<Isomorphism> isos = Isomorphism::initialSplit(block);
   for(int i=0; i<isos.size(); i++)
     isos[i].confirm();  
 
+  threshold(isos, 5, -1);    
   for(int i=0; i<isos.size(); i++)
   {
     printf("Iso %d\n", i);
@@ -388,7 +400,7 @@ vector<Isomorphism> isos = Isomorphism::initialSplit(block);
   remainder.markConstants();
   remainder.expandToDepth(64);
   fprintf(f,"digraph {\n");
-  vector<RegionX> isoPop = isos[137].eqClassRegions(block);
+  vector<RegionX> isoPop = isos[4].eqClassRegions(block);
   for(int i=0; i<isoPop.size(); i++)
   {
     char colour[32];
