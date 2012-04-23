@@ -175,10 +175,18 @@ bool eqSections( Section s1, Section s2 )
 {
   if( s1.possibles.size() != s2.possibles.size() ||
       s1.definite.size() != s2.definite.size() )
+  {
+    //printf("Section sizes %d %d %d %d\n",
+    //  s1.possibles.size(), s2.possibles.size(),
+    //  s1.definite.size(), s2.definite.size() );
     return false;
+  }
   for(int i=0; i<s1.definite.size(); i++)
     if( !isoInsts(s1.definite[i], s2.definite[i]) )
+    {
+      //printf("Section def differs\n");
       return false;
+    }
   for(int i=0; i<s1.possibles.size(); i++)
   {
     if(s1.possibles[i].size() != s2.possibles[i].size())
@@ -195,11 +203,17 @@ bool eqSections( Section s1, Section s2 )
 bool eqRegions( IsoRegion i1, IsoRegion i2)
 {
   if( i1.sections.size() != i2.sections.size() )
+  {
+    //printf("Section sizes %d %d\n", i1.sections.size(), i2.sections.size() );
     return false;
+  }
   for(int s=0; s<i1.sections.size(); s++)
   {
     if( !eqSections(i1.sections[s], i2.sections[s]) )
+    {
+      //printf("Section ineq %d\n",s);
       return false;
+    }
   }
   return true;
 }
@@ -293,6 +307,31 @@ public:
     }
     return result;
   }
+
+  void dump()
+  {
+    for(int j=0; j<regions.size(); j++)
+    {
+      printf("Region %d\n", j);
+      IsoRegion &cur = regions[j];
+      for(int k=0; k<cur.sections.size(); k++)
+      {
+        printf("  Section %d\n", k);
+        Value *v = cur.sections[k].head;
+        printf("  %s\n", v->repr().c_str());
+        for(int l=0; l<cur.sections[k].definite.size(); l++)
+          printf("  %d,%d: %s\n", k, l, cur.sections[k].definite[l]->repr().c_str());
+        vector<vector<Instruction*> > &useBins = cur.sections[k].possibles;
+        for(int k=0; k<useBins.size(); k++)
+        {
+          printf("    ");
+          for(int l=0; l<useBins[k].size(); l++)
+            printf("%s ",useBins[k][l]->repr().c_str());
+          printf("\n");
+        }
+      }
+    }
+  }
 };
 
 // There are two sensible measures of size for an Isomorphism:
@@ -319,6 +358,7 @@ vector<Isomorphism> isos = Isomorphism::initialSplit(block);
   // Ignore uncommon mappings to make dev/debug easier
   threshold(isos, 5, -1);    
   printf("%zu blocks\n", isos.size());
+  isos[2].dump(); 
 
 // Splitting step -> pushed into search process eventually
   vector<Isomorphism> newSplits;
@@ -335,33 +375,10 @@ vector<Isomorphism> isos = Isomorphism::initialSplit(block);
   for(int i=0; i<isos.size(); i++)
     isos[i].confirm();  
 
-  // Can also use ordering of outputs in new definites to push values as well...
-
-  // Need to convert a Canon into a Region...
-
-  //for(int i=0; i<isos.size(); i++)
-  int i=2;
+  for(int i=0; i<isos.size(); i++)
   {
-      printf("Bin %d\n", i);
-      for(int j=0; j<isos[i].regions.size(); j++)
-      {
-        IsoRegion &cur = isos[i].regions[j];
-        for(int k=0; k<cur.sections.size(); k++)
-        {
-          Value *v = cur.sections[k].head;
-          printf("  %s\n", v->repr().c_str());
-          for(int l=0; l<cur.sections[k].definite.size(); l++)
-            printf("  %d,%d: %s\n", k, l, cur.sections[k].definite[l]->repr().c_str());
-          vector<vector<Instruction*> > &useBins = cur.sections[k].possibles;
-          for(int k=0; k<useBins.size(); k++)
-          {
-            printf("    ");
-            for(int l=0; l<useBins[k].size(); l++)
-              printf("%s ",useBins[k][l]->repr().c_str());
-            printf("\n");
-          }
-        }
-      }
+    printf("Iso %d\n", i);
+    isos[i].dump(); 
   }
 
   FILE *f = fopen("crap2.dot","wt");
@@ -371,7 +388,7 @@ vector<Isomorphism> isos = Isomorphism::initialSplit(block);
   remainder.markConstants();
   remainder.expandToDepth(64);
   fprintf(f,"digraph {\n");
-  vector<RegionX> isoPop = isos[2].eqClassRegions(block);
+  vector<RegionX> isoPop = isos[137].eqClassRegions(block);
   for(int i=0; i<isoPop.size(); i++)
   {
     char colour[32];
