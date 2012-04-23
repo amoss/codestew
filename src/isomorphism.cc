@@ -63,6 +63,58 @@ vector<Value*> values;
   return partition<Value*>(values, isoValues);
 }
 
+// Isomorphism
+//   [IsoRegion]
+//     [Section]
+
+/* An Isomorphism is a mapping between sub-graphs of a Block that preserves the 
+   types of vertices and the edge structure within the induced sub-graph. This
+   implies that each vertex has a canonical numbering so that the vertex in each
+   sub-graph with the same number is equivalent wrt to its position within every 
+   trace within the sub-graph. The isomorphism between every pair of sub-graphs
+   is equivalent upto, but not including, the unique name of every vertex.
+       An IsoRegion holds information about the structure of each isomorphic 
+   sub-graph that is built up incrementally during the search process and reaches
+   a stable state in which the canonical numbering represented by the position of
+   the vertices within its container. The set of IsoRegions in an Isomorphism is 
+   built up in lock-step. As well as the canonical numbering implied by the storage
+   representation there is an implication that part of the isomorphism 
+   representation is stored across the set of IsoRegions.
+       A Section is a sub-graph within a Block that contains a single Value and the
+   set of Instructions that use that Value. The set of Instructions is partitions
+   according to distinguishability among the elements of the set. Elements that 
+   can be uniquely distinguished (e.g. by opcode) are referred to as definite 
+   because the isomorphic region can only be extended to include the Instruction
+   iff the Instruction matches across all IsoRegions. Elements that are not
+   locally unique (e.g. multiple Instructions with matching opcodes and operand
+   types) may be within the isomorphic regions but only if some unknown permutation
+   within each IsoRegion/Section produces a canonical numbers that is consistent
+   across the entire Isomorphism.
+*/
+
+class Section
+{
+public:
+Value *head;
+vector<Instruction *> definite;
+vector<vector<Instruction*> > possibles;
+  Section(Value *v)
+  {
+    head = v;
+    possibles = partition<Instruction*>(head->uses, isoInsts);
+    sort(possibles.begin(), possibles.end(), orderPos);
+  }
+};
+
+class IsoRegion
+{
+public:
+  vector<Section> sections;
+  IsoRegion(Section init)
+  {
+    sections.push_back(init);
+  }
+};
 
 class Canon
 {
@@ -105,6 +157,7 @@ bool orderPos(vector<Instruction*> a, vector<Instruction*> b)
 // The second loop to check element sizes is currently invalid as the blocks within the
 // partition stored in possibles are currently unsorted. They need to be sorted into
 // some arbitrary, but canonical order.
+// TODO Switch to IsoRegions
 bool eqPosShapes( Canon c1, Canon c2 )
 {
   if( c1.possibles.size() != c2.possibles.size() )
@@ -122,7 +175,25 @@ bool eqPosShapes( Canon c1, Canon c2 )
 class Isomorphism
 {
 public:
-  vector<Canon> matches;
+  vector<Canon> matches;    // TODO kill
+  vector<Section> sections;
+  // Temp default
+  Isomorphism()
+  {
+  }
+
+  // Replacement constructor for initByValues
+  Isomorphism(vector<Value*> seeds)
+  {
+    for(int i=0; i<seeds.size(); i++)
+      regions.push_back(IsoRegion(Section(seeds[i])));
+  }
+
+  // Replacement constructor for expand
+  Isomorphism(vector<IsoRegion> regions)
+  {
+    this->regions = regions;
+  }
 
   // Wrap each Value* seed as a definite data vertex inside a Canon
   void initByValues(vector<Value*> eqClass)
@@ -135,6 +206,20 @@ public:
     }
   }
 
+  // WAS vector<Isomorphism> seedByValues(Block *block)
+  static vector<Isomorphism> initialSplit(Block *block)
+  {
+  vector<Value*> values;
+    for(int i=0; i<block->numValues(); i++)
+      values.push_back(block->getValue(i));
+    vector<vector<Value*> > seeds = partition<Value*>(values, isoValues);
+
+  vector<Isomorphism> result;
+    for(int i=0; i<seeds.size(); i++)
+      result.push_back(Isomorphism(seeds[i]));
+    return result;
+  }
+
   // We are in a state where the Isomorphism was computed to match Values locally,
   // now we extend a step by considering the set of using Instructions and partitioning
   // according to a local equality relation on them. We not split on the Instructions
@@ -145,19 +230,23 @@ public:
   // then they may be isomorphic...
   vector<Isomorphism> expand()
   {
+/*  Now in the Section constructor
     for(int i=0; i<matches.size(); i++)
     {
       matches[i].possibles = partition<Instruction*>(matches[i].vals[0]->uses, isoInsts);
       sort(matches[i].possibles.begin(), matches[i].possibles.end(), orderPos);
     }
-    vector< vector<Canon> > split = partition<Canon>(matches,eqPosShapes);
+*/
+    // TODO switch over to IsoRegions
+    vector< vector<IsoRegion> > split = partition<Canon>(regions,eqPosShapes);
     vector<Isomorphism> result;
     for(int i=0; i<split.size(); i++)
-    {
+      result.push_back(Isomorphism(split[i]));
+/*    {
       Isomorphism iso;
       iso.matches = split[i];
       result.push_back(iso);
-    }
+    }*/
     return result; 
   }
 
@@ -231,18 +320,19 @@ void threshold( vector<Isomorphism> &isos, int minCommon, int minPop)
 
 void isoEntry(Block *block)
 {
-vector<Isomorphism> isos = seedByValues(block);
+//vector<Isomorphism> isos = seedByValues(block);
+vector<Isomorphism> isos = Isomorphism::initialSplit(block);
 
   printf("%zu blocks\n", isos.size());
   // Ignore uncommon mappings to make dev/debug easier
-  threshold(isos, 5, -1);
+  threshold(isos, 5, -1);     // TODO
   printf("%zu blocks\n", isos.size());
 
 // Splitting step -> pushed into search process eventually
   vector<Isomorphism> newSplits;
   for(int i=0; i<isos.size(); i++)
   {
-    vector<Isomorphism> split = isos[i].expand();
+    vector<Isomorphism> split = isos[i].expand(); // TODO, head already expanded, do Sections
     newSplits.insert( newSplits.end(), split.begin(), split.end() );
   }
   isos = newSplits;
@@ -251,7 +341,7 @@ vector<Isomorphism> isos = seedByValues(block);
 
   // Push singleton blocks from possibles to definites...
   for(int i=0; i<isos.size(); i++)
-    isos[i].confirm();
+    isos[i].confirm();    // TODO move into Section
 
   // Can also use ordering of outputs in new definites to push values as well...
 
