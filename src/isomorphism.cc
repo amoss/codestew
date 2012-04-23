@@ -64,6 +64,17 @@ vector<Value*> values;
   return partition<Value*>(values, isoValues);
 }
 
+bool orderPos(vector<Instruction*> a, vector<Instruction*> b)
+{
+  if( a[0]->opcode < b[0]->opcode )
+    return true;
+  if( a[0]->opcode > b[0]->opcode )
+    return false;
+  if( a.size() < b.size() )
+    return true;
+  return false;
+}
+
 // Isomorphism
 //   [IsoRegion]
 //     [Section]
@@ -105,28 +116,10 @@ vector<vector<Instruction*> > possibles;
     possibles = partition<Instruction*>(head->uses, isoInsts);
     sort(possibles.begin(), possibles.end(), orderPos);
   }
-};
 
-class IsoRegion
-{
-public:
-  vector<Section> sections;
-  IsoRegion(Section init)
+  vector<Value*> confirm()
   {
-    sections.push_back(init);
-  }
-
-};
-
-class Canon
-{
-public:
-  vector<Value*> vals;
-  vector<Instruction*> definite;
-  vector< vector<Instruction*> > possibles;
-
-  void confirm()
-  {
+    vector<Value*> orderedVals;
     for(int i=0; i<possibles.size(); )
       if(possibles[i].size()==1)
       {
@@ -135,38 +128,77 @@ public:
         // be confirmed as well. As the block is SSA each confirmed Value only has
         // an incoming edge from the confirmed instruction.
         for(int j=0; j<possibles[i][0]->outputs.size(); j++)
-          vals.push_back(possibles[i][0]->outputs[j]);
+          orderedVals.push_back(possibles[i][0]->outputs[j]);
         possibles.erase( possibles.begin()+i );
       }
       else
         i++;
+    return orderedVals;
   }
-  // Match? -> yes, no, so-far...
 };
 
-bool orderPos(vector<Instruction*> a, vector<Instruction*> b)
+class IsoRegion
 {
-  if( a[0]->opcode < b[0]->opcode )
-    return true;
-  if( a[0]->opcode > b[0]->opcode )
+public:
+  vector<Section> sections;
+
+  IsoRegion()
+  {
+  }
+
+  IsoRegion(Section init)
+  {
+    sections.push_back(init);
+  }
+
+  void confirm()
+  {
+    vector<Value*> newHeads;
+    for(int i=0; i<sections.size(); i++)
+    {
+      vector<Value*> partial = sections[i].confirm();
+      newHeads.insert( newHeads.end(), partial.begin(), partial.end() );
+    }
+    for(int i=0; i<newHeads.size(); i++)
+      sections.push_back( Section(newHeads[i]) );
+  }
+
+};
+
+/* Equality between Sections is defined over both shape and content. The shape 
+   requirements are that the definites list and the possibles distribution must be the
+   same size, and the latter must have blocks within the partition of matching sizes.
+   Once the shape is validated instructions are compared between blocks of the partitions
+   to ensure they match.
+*/
+bool eqSections( Section s1, Section s2 )
+{
+  if( s1.possibles.size() != s2.possibles.size() ||
+      s1.definite.size() != s2.definite.size() )
     return false;
-  if( a.size() < b.size() )
-    return true;
-  return false;
+  for(int i=0; i<s1.definite.size(); i++)
+    if( !isoInsts(s1.definite[i], s2.definite[i]) )
+      return false;
+  for(int i=0; i<s1.possibles.size(); i++)
+  {
+    if(s1.possibles[i].size() != s2.possibles[i].size())
+      return false;
+    if(!isoInsts(s1.possibles[i][0], s2.possibles[i][0]) )
+      return false;
+  }
+  return true;
 }
 
-// Compare by shape
-// The second loop to check element sizes is currently invalid as the blocks within the
-// partition stored in possibles are currently unsorted. They need to be sorted into
-// some arbitrary, but canonical order.
-// TODO Switch to IsoRegions?????
-bool eqPosShapes( Section r1, Section r2 )
+/* Two regions are equal if they have the same number of sections, and the above
+   equality holds pointwise across the sections in the list of regions.
+*/
+bool eqRegions( IsoRegion i1, IsoRegion i2)
 {
-  if( c1.possibles.size() != c2.possibles.size() )
+  if( i1.sections.size() != i2.sections.size() )
     return false;
-  for(int i=0; i<c1.possibles.size(); i++)
+  for(int s=0; s<i1.sections.size(); s++)
   {
-    if(c1.possibles[i].size() != c2.possibles[i].size())
+    if( !eqSections(i1.sections[s], i2.sections[s]) )
       return false;
   }
   return true;
@@ -177,8 +209,7 @@ bool eqPosShapes( Section r1, Section r2 )
 class Isomorphism
 {
 public:
-  vector<Canon> matches;    // TODO kill
-  vector<Section> sections;
+  vector<IsoRegion> regions;
   // Temp default
   Isomorphism()
   {
@@ -197,18 +228,6 @@ public:
     this->regions = regions;
   }
 
-  // Wrap each Value* seed as a definite data vertex inside a Canon
-  void initByValues(vector<Value*> eqClass)
-  {
-    for(int i=0; i<eqClass.size(); i++)
-    {
-      Canon c;
-      c.vals.push_back( eqClass[i] );
-      matches.push_back(c);
-    }
-  }
-
-  // WAS vector<Isomorphism> seedByValues(Block *block)
   static vector<Isomorphism> initialSplit(Block *block)
   {
   vector<Value*> values;
@@ -222,53 +241,21 @@ public:
     return result;
   }
 
-  // We are in a state where the Isomorphism was computed to match Values locally,
-  // now we extend a step by considering the set of using Instructions and partitioning
-  // according to a local equality relation on them. We not split on the Instructions
-  // directly as there is an unknown permutation over their ordering. Instead we split
-  // on their distribution according to the equality relation as a conservative
-  // approximation of isomorphism - i.e. if the distribution differs then the two 
-  // regions are definitely not isomorphic after expansion. If the distributions match
-  // then they may be isomorphic...
-  vector<Isomorphism> expand()
+  /* Using the equality definitions on IsoRegions and Sections check that every
+     IsoRegion within an Isomorphism is indistinguishable. Where some distinction
+     exists partition the IsoRegions into equivalence classes, and re-wrap each
+     block of the partition into a new Isomorphism.
+         Where update operations to extend the IsoRegions across the block cause
+     differences to appear this operation splits the Isomorphism into separate 
+     valid Isomorphisms.
+  */
+  vector<Isomorphism> distinguish()
   {
-/*  Now in the Section constructor
-    for(int i=0; i<matches.size(); i++)
-    {
-      matches[i].possibles = partition<Instruction*>(matches[i].vals[0]->uses, isoInsts);
-      sort(matches[i].possibles.begin(), matches[i].possibles.end(), orderPos);
-    }
-*/
-    // TODO switch over to IsoRegions
-    vector< vector<IsoRegion> > split = partition<Canon>(regions,eqPosShapes);
-
-    // vector<Isomorphism> ... = partition( equality over number of sections )
-    // Inside each equality class:
-    //   for section[i] ...
-    //      vector<Isomorphism> ... = partition( equality of section[i] )
-    // No longer an expand() call, handled in Section cons, now it is split() or distinguish()...
-    // Check that number of Sections matches
-    //   split if not..
-    // For every Section in the first IsoRegion
-    //   split entire Isomorphism if Section[i] differs
-
-    // Across every IsoRegion
-    //   Need to decide if every Section matches
-    //      Split...
-
-    vector< vector<Section> > split = partition<Canon>(regions,eqPosShapes);
-
-
-
+    vector<vector<IsoRegion> > split = partition<IsoRegion>(regions, eqRegions);
     vector<Isomorphism> result;
     for(int i=0; i<split.size(); i++)
       result.push_back(Isomorphism(split[i]));
-/*    {
-      Isomorphism iso;
-      iso.matches = split[i];
-      result.push_back(iso);
-    }*/
-    return result; 
+    return result;
   }
 
   // Find singeleton blocks of possible instructions - as these are singleton they map
@@ -280,48 +267,33 @@ public:
   // equivalent transformation.
   void confirm()
   {
-    for(int i=0; i<matches.size(); i++)
-      matches[i].confirm();
-    
+    for(int i=0; i<regions.size(); i++)
+      regions[i].confirm();
   }
 
-  vector<RegionX> regions(Block *block)
+  vector<RegionX> eqClassRegions(Block *block)
   {
     vector<RegionX> result;
-    for(int i=0; i<matches[0].vals.size(); i++)
+    for(int i=0; i<regions[0].sections.size(); i++)
     {
       RegionX r = RegionX(block);
-      for(int j=0; j<matches.size(); j++)
-        r.mark(matches[j].vals[i]);
+      for(int j=0; j<regions.size(); j++)
+        r.mark(regions[j].sections[i].head);
       result.push_back(r);
     }
-    for(int i=0; i<matches[0].definite.size(); i++)
+    for(int i=0; i<regions[0].sections.size(); i++)
     {
-      RegionX r = RegionX(block);
-      for(int j=0; j<matches.size(); j++)
-        r.mark(matches[j].definite[i]);
-      result.push_back(r);
+      for(int j=0; j<regions[0].sections[i].definite.size(); j++)
+      {
+        RegionX r = RegionX(block);
+        for(int k=0; k<regions.size(); k++)
+          r.mark(regions[k].sections[i].definite[j]);
+        result.push_back(r);
+      }
     }
     return result;
   }
 };
-
-// Use the local equality function over Values in the supplied block to split
-// them into equality classes, each class represents a set of Values that look locally
-// similar (type and out-degree) wrapped in Canon objects.
-vector<Isomorphism> seedByValues(Block *block)
-{
-vector<Isomorphism> result;
-  // TODO: Maybe pull blockDataPartition inside here?
-  vector<vector<Value*> > seeds = blockDataPartition(block);
-  for(int i=0; i<seeds.size(); i++)
-  {
-    Isomorphism valEqClass;
-    valEqClass.initByValues( seeds[i] );
-    result.push_back(valEqClass);
-  }
-  return result;
-}
 
 // There are two sensible measures of size for an Isomorphism:
 //   the number of regions it maps onto (we term commonality)
@@ -341,7 +313,6 @@ void threshold( vector<Isomorphism> &isos, int minCommon, int minPop)
 
 void isoEntry(Block *block)
 {
-//vector<Isomorphism> isos = seedByValues(block);
 vector<Isomorphism> isos = Isomorphism::initialSplit(block);
 
   printf("%zu blocks\n", isos.size());
@@ -353,7 +324,7 @@ vector<Isomorphism> isos = Isomorphism::initialSplit(block);
   vector<Isomorphism> newSplits;
   for(int i=0; i<isos.size(); i++)
   {
-    vector<Isomorphism> split = isos[i].expand(); // TODO, head already expanded, do Sections
+    vector<Isomorphism> split = isos[i].distinguish();
     newSplits.insert( newSplits.end(), split.begin(), split.end() );
   }
   isos = newSplits;
@@ -362,7 +333,7 @@ vector<Isomorphism> isos = Isomorphism::initialSplit(block);
 
   // Push singleton blocks from possibles to definites...
   for(int i=0; i<isos.size(); i++)
-    isos[i].confirm();    // TODO move into Section
+    isos[i].confirm();  
 
   // Can also use ordering of outputs in new definites to push values as well...
 
@@ -372,19 +343,23 @@ vector<Isomorphism> isos = Isomorphism::initialSplit(block);
   int i=2;
   {
       printf("Bin %d\n", i);
-      for(int j=0; j<isos[i].matches.size(); j++)
+      for(int j=0; j<isos[i].regions.size(); j++)
       {
-        Value *v = isos[i].matches[j].vals[0];
-        printf("  %s\n", v->repr().c_str());
-        for(int k=0; k<isos[i].matches[j].definite.size(); k++)
-          printf("  %d: %s\n", k, isos[i].matches[j].definite[k]->repr().c_str());
-        vector<vector<Instruction*> > &useBins = isos[i].matches[j].possibles;
-        for(int k=0; k<useBins.size(); k++)
+        IsoRegion &cur = isos[i].regions[j];
+        for(int k=0; k<cur.sections.size(); k++)
         {
-          printf("    ");
-          for(int l=0; l<useBins[k].size(); l++)
-            printf("%s ",useBins[k][l]->repr().c_str());
-          printf("\n");
+          Value *v = cur.sections[k].head;
+          printf("  %s\n", v->repr().c_str());
+          for(int l=0; l<cur.sections[k].definite.size(); l++)
+            printf("  %d,%d: %s\n", k, l, cur.sections[k].definite[l]->repr().c_str());
+          vector<vector<Instruction*> > &useBins = cur.sections[k].possibles;
+          for(int k=0; k<useBins.size(); k++)
+          {
+            printf("    ");
+            for(int l=0; l<useBins[k].size(); l++)
+              printf("%s ",useBins[k][l]->repr().c_str());
+            printf("\n");
+          }
         }
       }
   }
@@ -396,7 +371,7 @@ vector<Isomorphism> isos = Isomorphism::initialSplit(block);
   remainder.markConstants();
   remainder.expandToDepth(64);
   fprintf(f,"digraph {\n");
-  vector<RegionX> isoPop = isos[2].regions(block);
+  vector<RegionX> isoPop = isos[2].eqClassRegions(block);
   for(int i=0; i<isoPop.size(); i++)
   {
     char colour[32];
@@ -405,7 +380,8 @@ vector<Isomorphism> isos = Isomorphism::initialSplit(block);
     isoPop[i].dotColourSet(f,colour);
     remainder.subtract(&isoPop[i]);
   }
-  remainder.dotColourSet(f,"lightskyblue");
+  char defColour[] = "lightskyblue";
+  remainder.dotColourSet(f,defColour);
   fprintf(f,"}\n");
   fclose(f);
 }
