@@ -1,6 +1,7 @@
 #include "vis.h"
 #include "isomorphism.h"
 #include <iostream>
+#include <stdio.h>
 using namespace std;
 
 // Set theoretic operations:

@@ -1,4 +1,5 @@
 #include "vis.h"
+#include <stdio.h>
 
 using namespace std;
 
@@ -114,6 +115,7 @@ public:
   {
     sections.push_back(init);
   }
+
 };
 
 class Canon
@@ -157,8 +159,8 @@ bool orderPos(vector<Instruction*> a, vector<Instruction*> b)
 // The second loop to check element sizes is currently invalid as the blocks within the
 // partition stored in possibles are currently unsorted. They need to be sorted into
 // some arbitrary, but canonical order.
-// TODO Switch to IsoRegions
-bool eqPosShapes( Canon c1, Canon c2 )
+// TODO Switch to IsoRegions?????
+bool eqPosShapes( Section r1, Section r2 )
 {
   if( c1.possibles.size() != c2.possibles.size() )
     return false;
@@ -239,6 +241,25 @@ public:
 */
     // TODO switch over to IsoRegions
     vector< vector<IsoRegion> > split = partition<Canon>(regions,eqPosShapes);
+
+    // vector<Isomorphism> ... = partition( equality over number of sections )
+    // Inside each equality class:
+    //   for section[i] ...
+    //      vector<Isomorphism> ... = partition( equality of section[i] )
+    // No longer an expand() call, handled in Section cons, now it is split() or distinguish()...
+    // Check that number of Sections matches
+    //   split if not..
+    // For every Section in the first IsoRegion
+    //   split entire Isomorphism if Section[i] differs
+
+    // Across every IsoRegion
+    //   Need to decide if every Section matches
+    //      Split...
+
+    vector< vector<Section> > split = partition<Canon>(regions,eqPosShapes);
+
+
+
     vector<Isomorphism> result;
     for(int i=0; i<split.size(); i++)
       result.push_back(Isomorphism(split[i]));
@@ -310,8 +331,8 @@ void threshold( vector<Isomorphism> &isos, int minCommon, int minPop)
 {
   for(int i=0; i<isos.size();)
   {
-    if(int(isos[i].matches.size()) < minCommon || 
-       int(isos[i].matches[0].vals.size()) < minPop )
+    if(int(isos[i].regions.size()) < minCommon || 
+       int(isos[i].regions[0].sections.size()) < minPop )
       isos.erase( isos.begin()+i );
     else
       i++;
@@ -325,7 +346,7 @@ vector<Isomorphism> isos = Isomorphism::initialSplit(block);
 
   printf("%zu blocks\n", isos.size());
   // Ignore uncommon mappings to make dev/debug easier
-  threshold(isos, 5, -1);     // TODO
+  threshold(isos, 5, -1);    
   printf("%zu blocks\n", isos.size());
 
 // Splitting step -> pushed into search process eventually
