@@ -291,7 +291,7 @@ public:
     vector<RegionX> result;
     for(int i=0; i<regions[0].sections.size(); i++)
     {
-      sprintf(colName,"fillcolor=\"/spectral11/%d\"",i+1); 
+      sprintf(colName,"style=filled,fillcolor=\"/spectral11/%d\"",i+1); 
       RegionX r = RegionX(block,colName);
       for(int j=0; j<regions.size(); j++)
         r.mark(regions[j].sections[i].head);
@@ -302,7 +302,7 @@ public:
     {
       for(int j=0; j<regions[0].sections[i].definite.size(); j++)
       {
-        sprintf(colName,"fillcolor=\"/purples8/%d\"",defCounter+2); 
+        sprintf(colName,"style=filled,fillcolor=\"/purples8/%d\"",defCounter+2); 
         RegionX r = RegionX(block,colName);
         for(int k=0; k<regions.size(); k++)
           r.mark(regions[k].sections[i].definite[j]);
@@ -315,8 +315,8 @@ public:
     {
       for(int j=0; j<regions[0].sections[i].possibles.size(); j++)
       {
-        sprintf(colName,"fillcolor=\"/ylorrd8/%d\"",posCounter+1); 
-        RegionX r = RegionX(block);
+        sprintf(colName,"style=filled,fillcolor=\"/ylorrd8/%d\"",posCounter+1); 
+        RegionX r = RegionX(block,colName);
         for(int k=0; k<regions.size(); k++)
           for(int l=0; l<regions[0].sections[i].possibles[j].size(); l++)
             r.mark(regions[k].sections[i].possibles[j][l]);
@@ -412,7 +412,7 @@ vector<Isomorphism> isos = Isomorphism::initialSplit(block);
   for(int i=0; i<isoPop.size(); i++)
   {
     char colour[32];
-    sprintf(colour,"/set312/%d",i+1);
+    sprintf(colour,"pink");
     isoPop[i].intersectFrom(&remainder);
     isoPop[i].dotColourSet(f,colour);
     remainder.subtract(&isoPop[i]);
