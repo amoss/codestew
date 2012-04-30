@@ -9,13 +9,14 @@ using namespace std;
 //    union
 //    subtract
 
-RegionX::RegionX(Block *b)
+RegionX::RegionX(Block *b, string style)
 {
   block = b;
   ninsts = b->numInsts();
   nvals  = b->numValues();
   insts = new bool[ninsts];
   vals  = new bool[nvals];
+  vStyle = style;
   clear();
 }
 
@@ -309,16 +310,21 @@ FILE *f = fopen(filename,"w");
 void RegionX::dotColourSet(FILE *f, char *name)
 {
   for(int i=0; i<nvals; i++)
-    if( vals[i] )
+  {
+    if( vals[i] && vStyle.length()==0)
       fprintf(f,"v%d [style=filled,color=\"%s\",label=\"%d : %s\"];\n", i, name, i, 
                 block->getValue(i)->type->repr().c_str());
+    if( vals[i] && vStyle.length()>0)
+      fprintf(f,"v%d [style=filled,%s,label=\"%d : %s\"];\n", i, vStyle.c_str(), i, 
+                block->getValue(i)->type->repr().c_str());
+  }
 
   for(int i=0; i<ninsts; i++)
   {
     if(!insts[i])
       continue;
     Instruction *inst = block->getInst(i);
-    fprintf(f,"i%d [shape=rect,style=filled,color=\"%s\",label=\"%s\"];\n", 
+    fprintf(f,"i%d [shape=rect,style=filled,fillcolor=\"%s\",label=\"%s\"];\n", 
               i, name, inst->opcode->name);
     for(int j=0; j<inst->inputs.size(); j++)
       fprintf(f,"v%llu -> i%d;\n", inst->inputs[j]->ref, i);

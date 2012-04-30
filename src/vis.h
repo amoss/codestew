@@ -23,8 +23,9 @@ class RegionX
   Block *block;
   bool *insts, *vals;
   int ninsts, nvals;
+  string vStyle;
 public:
-  RegionX(Block *);
+  RegionX(Block *, string style="");
   string repr();
   string reprValue(uint64);
   int markedInsts();

@@ -287,33 +287,41 @@ public:
 
   vector<RegionX> eqClassRegions(Block *block)
   {
+    char colName[64];
     vector<RegionX> result;
     for(int i=0; i<regions[0].sections.size(); i++)
     {
-      RegionX r = RegionX(block);
+      sprintf(colName,"fillcolor=\"/spectral11/%d\"",i+1); 
+      RegionX r = RegionX(block,colName);
       for(int j=0; j<regions.size(); j++)
         r.mark(regions[j].sections[i].head);
       result.push_back(r);
     }
+    int defCounter=0;
     for(int i=0; i<regions[0].sections.size(); i++)
     {
       for(int j=0; j<regions[0].sections[i].definite.size(); j++)
       {
-        RegionX r = RegionX(block);
+        sprintf(colName,"fillcolor=\"/purples8/%d\"",defCounter+2); 
+        RegionX r = RegionX(block,colName);
         for(int k=0; k<regions.size(); k++)
           r.mark(regions[k].sections[i].definite[j]);
         result.push_back(r);
+        defCounter++;
       }
     }
+    int posCounter=0;
     for(int i=0; i<regions[0].sections.size(); i++)
     {
       for(int j=0; j<regions[0].sections[i].possibles.size(); j++)
       {
+        sprintf(colName,"fillcolor=\"/ylorrd8/%d\"",posCounter+1); 
         RegionX r = RegionX(block);
         for(int k=0; k<regions.size(); k++)
           for(int l=0; l<regions[0].sections[i].possibles[j].size(); l++)
             r.mark(regions[k].sections[i].possibles[j][l]);
         result.push_back(r);
+        posCounter++;
       }
     }
     return result;
@@ -369,7 +377,6 @@ vector<Isomorphism> isos = Isomorphism::initialSplit(block);
   // Ignore uncommon mappings to make dev/debug easier
   threshold(isos, 5, -1);    
   printf("%zu blocks\n", isos.size());
-  isos[2].dump(); 
 
 // Splitting step -> pushed into search process eventually
   vector<Isomorphism> newSplits;
@@ -387,11 +394,11 @@ vector<Isomorphism> isos = Isomorphism::initialSplit(block);
     isos[i].confirm();  
 
   threshold(isos, 5, -1);    
-  for(int i=0; i<isos.size(); i++)
-  {
-    printf("Iso %d\n", i);
-    isos[i].dump(); 
-  }
+  //for(int i=0; i<isos.size(); i++)
+  //{
+  //  printf("Iso %d\n", i);
+  //  isos[i].dump(); 
+  //}
 
   FILE *f = fopen("crap2.dot","wt");
   RegionX remainder(block);
@@ -399,17 +406,18 @@ vector<Isomorphism> isos = Isomorphism::initialSplit(block);
     remainder.mark( block->getInput(i) );
   remainder.markConstants();
   remainder.expandToDepth(64);
+  isos[4].dump(); 
   fprintf(f,"digraph {\n");
   vector<RegionX> isoPop = isos[4].eqClassRegions(block);
   for(int i=0; i<isoPop.size(); i++)
   {
     char colour[32];
-    sprintf(colour,"/ylorrd9/%d",i+1);
+    sprintf(colour,"/set312/%d",i+1);
     isoPop[i].intersectFrom(&remainder);
     isoPop[i].dotColourSet(f,colour);
     remainder.subtract(&isoPop[i]);
   }
-  char defColour[] = "lightskyblue";
+  char defColour[] = "white";
   remainder.dotColourSet(f,defColour);
   fprintf(f,"}\n");
   fclose(f);

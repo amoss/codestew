@@ -16,6 +16,8 @@ build/%.o: src/%.cc src/%.h Makefile
 build/%: cogens/%.cc ${OBJS}
 	g++ ${DEBUG} -Isrc $< ${OBJS} -o $@
 
+build/isomorphism.o: src/vis.h
+
 PYNAME=python2.7    # Different install on the mac/linux boxes
 pycodestew.so: src/pycodestew.cc src/codestew.cc src/codestew.h src/SimpleMachine.h \
                src/SimpleMachine.cc
