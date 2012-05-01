@@ -344,50 +344,73 @@ public:
     return result;
   }
 
+  /* Scan the IsoRegion and output the <section,block> indices for the blocks within
+     the possibles partition. If the region/section/blocks storage is viewed as a 3D
+     array then this function computes the indices of a section/blocks slice for a 
+     fixed region.
+  */
+  vector< pair<int,int> > possiblesBlocks(int region)
+  {
+    vector< pair<int,int> > result;   // Indices for the slice of this image
+    IsoRegion &r = regions[region];
+    for(int i=0; i<r.sections.size(); i++)
+    {
+      for(int j=0; j<r.sections[i].possibles.size(); j++)
+        result.push_back( pair<int,int>(i,j) );
+    }
+    return result;
+  }
+
+  /* Create a slice of <section,block> from every IsoRegion. The slice does not
+     preserve topology, collapse the blocks into a flat list.
+  */
+  vector< vector<Instruction*> > slicePosBlocks(int section, int block)
+  {
+    vector< vector<Instruction*> > productions;
+    for(int i=0; i<regions.size(); i++)
+      productions.push_back(regions[i].sections[section].possibles[block]);
+    return productions;
+  }
+
+  /* TODO: Really need to fix the horrific hack by deciding what we will do with
+           multi-return instructions.
+  */
+  vector< vector<Value*> > mapBlocksToProds(vector< vector<Instruction*> > producers)
+  {
+    vector< vector<Value*> > result;
+    for(int i=0; i<producers.size(); i++)
+    {
+      vector<Value*> blockVals;
+      for(int j=0; j<producers[i].size(); j++)
+      {
+        if(producers[i][j]->outputs.size()!=1)
+        {
+          printf("Multi-output Instructions not classified yet!\n");
+          exit(-1);
+        }
+        blockVals.push_back(producers[i][j]->outputs[0]);
+      }
+      result.push_back(blockVals);
+    }
+    return result;
+  }
+
   // two-stepper
   // 1. ordering block be valIso
   // 2. splitting isomorphism to remove non-matching
   vector<Isomorphism> incProductions()
   {
-    /* We presume that the IsoRegions have been checked down to the possibles blocks,
-       so each possibles block within a Section should be isomorphic across all of the
-       regions. We can take the first such block as an image of the whole set as we
-       just want to output structure that is entirely described by the properties already
-       considered.
-    */
-    int counter=0;
-    vector< pair<int,int> > blImages;   // Indices for the slice of this image
-    for(int i=0; i<regions[0].sections.size(); i++)
-    {
-      for(int j=0; j<regions[0].sections[i].possibles.size(); j++)
-      {
-        printf("Possibles %d: ",counter);
-        vector<Instruction*> &image = regions[0].sections[i].possibles[j];
-        blImages.push_back( pair<int,int>(i,j) );
-        for(int k=0; k<image.size(); k++)
-          printf("%s ",image[k]->repr().c_str());
-        printf("\n");
-        counter++;
-      }
-    }
+    // Assume that all IsoRegions are currently matching so pick an arbitrary region
+    // to scan for the possibles blocks.
+    vector< pair<int,int> > blImages = possiblesBlocks(0);
 
+    // TODO: The tail of this function needs to look over elements in blImages
     int sIdx = blImages[0].first;
     int pIdx = blImages[0].second;
-    vector< vector<Value*> > productions;
-    for(int i=0; i<regions.size(); i++)
-    {
-      vector<Instruction*> &image = regions[i].sections[sIdx].possibles[pIdx];
-      vector<Value*> blockVals;
-      for(int k=0; k<image.size(); k++)
-      {
-        if(image[k]->outputs.size()!=1) {
-          printf("Multi-output Instructions not classified yet!\n");
-          exit(-1);
-        }
-        blockVals.push_back(image[k]->outputs[0]);
-      }
-      productions.push_back(blockVals);
-    }
+
+    vector< vector<Instruction*> > producers = slicePosBlocks(sIdx,pIdx);
+    vector< vector<Value*> > productions     = mapBlocksToProds(producers);
+
 
     // Sort each block of Values projected from the Instruction blocks, then partition
     // by equality between blocks.
@@ -396,6 +419,10 @@ public:
     for(int i=0; i<valSplit.size(); i++)
       for(int j=0; j<valSplit[i].size(); j++)
         sort(valSplit[i][j].begin(), valSplit[i][j].end(), orderVals);
+
+    // Ideas for refactoring:
+    //   Confirming each of the possibles instructions
+    //   Slicing?
 
     // TODO: We are restructuring every iso split from this one. We only want to split
     //       the one that we are keeping, or if we keep the others do each iso relative
