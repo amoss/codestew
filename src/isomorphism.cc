@@ -64,6 +64,7 @@ vector<Value*> values;
   return partition<Value*>(values, isoValues);
 }
 
+// Arbitrary ordering over blocks within a partition to make distributions comparable.
 bool orderPos(vector<Instruction*> a, vector<Instruction*> b)
 {
   if( a[0]->opcode < b[0]->opcode )
@@ -73,6 +74,27 @@ bool orderPos(vector<Instruction*> a, vector<Instruction*> b)
   if( a.size() < b.size() )
     return true;
   return false;
+}
+
+// TODO: Implement
+//       Should this be related to the eq buried insid incProductions?
+//       If all the eqs/orders pair up are we using families of relations over the graph?
+bool orderVals(Value *a, Value *b)
+{
+  if( a->uses.size() < b->uses.size() )
+    return true;
+  return false;
+}
+
+// Higher-order version of isoVals. Compares blocks of vals within a partition.
+bool eqValBlock(vector<Value*> a, vector<Value*> b)
+{
+  if(a.size()!=b.size())  
+    return false;
+  for(int i=0; i<a.size(); i++)
+    if(!isoValues(a[i],b[i]))
+      return false;
+  return true;
 }
 
 // Isomorphism
@@ -272,6 +294,74 @@ public:
     return result;
   }
 
+  // two-stepper
+  // 1. ordering block be valIso
+  // 2. splitting isomorphism to remove non-matching
+  void incProductions()
+  {
+    /* We presume that the IsoRegions have been checked down to the possibles blocks,
+       so each possibles block within a Section should be isomorphic across all of the
+       regions. We can take the first such block as an image of the whole set as we
+       just want to output structure that is entirely described by the properties already
+       considered.
+    */
+    int counter=0;
+    vector< pair<int,int> > blImages;   // Indices for the slice of this image
+    for(int i=0; i<regions[0].sections.size(); i++)
+    {
+      for(int j=0; j<regions[0].sections[i].possibles.size(); j++)
+      {
+        printf("Possibles %d: ",counter);
+        vector<Instruction*> &image = regions[0].sections[i].possibles[j];
+        blImages.push_back( pair<int,int>(i,j) );
+        for(int k=0; k<image.size(); k++)
+          printf("%s ",image[k]->repr().c_str());
+        printf("\n");
+        counter++;
+      }
+    }
+
+    int sIdx = blImages[0].first;
+    int pIdx = blImages[0].second;
+    vector< vector<Value*> > productions;
+    for(int i=0; i<regions.size(); i++)
+    {
+      vector<Instruction*> &image = regions[i].sections[sIdx].possibles[pIdx];
+      vector<Value*> blockVals;
+      for(int k=0; k<image.size(); k++)
+      {
+        if(image[k]->outputs.size()!=1) {
+          printf("Multi-output Instructions not classified yet!\n");
+          exit(-1);
+        }
+        blockVals.push_back(image[k]->outputs[0]);
+      }
+      productions.push_back(blockVals);
+    }
+
+    // Sort each block of Values projected from the Instruction blocks, then partition
+    // by equality between blocks.
+    vector< vector< vector<Value* > > > valSplit =
+                                    partition< vector<Value*> >(productions, eqValBlock);
+    for(int i=0; i<valSplit.size(); i++)
+      for(int j=0; j<valSplit[i].size(); j++)
+        sort(valSplit[i][j].begin(), valSplit[i][j].end(), orderVals);
+
+    // Dump the two-step results
+    for(int i=0; i<valSplit.size(); i++)
+    {
+      printf("Block %d: (%d)\n", i, valSplit[i].size());
+      for(int j=0; j<valSplit[i].size(); j++)
+      {
+        printf("  ");
+        for(int k=0; k<valSplit[i][j].size(); k++)
+          printf("%s,%zu ",valSplit[i][j][k]->repr().c_str(), valSplit[i][j][k]->uses.size());
+        printf("\n");
+      }
+    }
+  }
+
+
   // Find singeleton blocks of possible instructions - as these are singleton they map
   // to exactly one instruction in each Canon within the Isomorphism. Move them into
   // the definite array so that they all have matching indices (the canonical map to
@@ -392,8 +482,28 @@ vector<Isomorphism> isos = Isomorphism::initialSplit(block);
   // Push singleton blocks from possibles to definites...
   for(int i=0; i<isos.size(); i++)
     isos[i].confirm();  
-
   threshold(isos, 5, -1);    
+  isos[4].dump(); 
+
+  // Compare instructions in a partition block by comparing their
+  // produced values to see if they look isomorphic.
+  // ...This should split the adds...
+  isos[4].incProductions();
+
+  // Compare boundaries to possibles instructions according to a simple
+  // classification [ Section(n) within iso (diff region) | Section(n) (same)
+  // | Outside all IsoRegions ]
+
+
+  // Hmmmmmmmmmmmmmmmmmmmmmm
+  // Algorithm:
+  //   ..?..
+  //   Floodfill IsoRegions in lockstep
+  //     Found a difference? either split the Isomorphism or pause in this direction
+  //   ..?..
+  // What happens if all of the pathways from the known part of the Isomorphism
+  // go into unknown, non-overlapping, parts of the graph?
+
   //for(int i=0; i<isos.size(); i++)
   //{
   //  printf("Iso %d\n", i);
@@ -406,7 +516,6 @@ vector<Isomorphism> isos = Isomorphism::initialSplit(block);
     remainder.mark( block->getInput(i) );
   remainder.markConstants();
   remainder.expandToDepth(64);
-  isos[4].dump(); 
   fprintf(f,"digraph {\n");
   vector<RegionX> isoPop = isos[4].eqClassRegions(block);
   for(int i=0; i<isoPop.size(); i++)
