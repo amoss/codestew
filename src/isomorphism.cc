@@ -157,6 +157,17 @@ vector<vector<Instruction*> > possibles;
         i++;
     return orderedVals;
   }
+
+  int locate(Instruction *inst)
+  {
+    for(int i=0; i<possibles.size(); i++)
+    {
+      vector<Instruction*> &check = possibles[i];
+      if( find(check.begin(), check.end(), inst) != check.end() )
+        return i;
+    }
+    return -1;
+  }
 };
 
 class IsoRegion
@@ -171,6 +182,23 @@ public:
   IsoRegion(Section init)
   {
     sections.push_back(init);
+  }
+
+  int locate(Instruction *inst)
+  {
+    for(int i=0; i<sections.size(); i++)
+    {
+      vector<Instruction*> &check = sections[i].definite;
+      if( find(check.begin(), check.end(), inst) != check.end() )
+        return i;
+      for(int j=0; j<sections[i].possibles.size(); j++)
+      {
+        vector<Instruction*> &check = sections[i].possibles[j];
+        if( find(check.begin(), check.end(), inst)!=check.end() )
+          return i;
+      }
+    }
+    return -1;
   }
 
   void confirm()
@@ -264,6 +292,28 @@ public:
     this->regions = regions;
   }
 
+  /* Find which IsoRegion the Instruction is within
+  */
+  int locate(Instruction *inst)
+  {
+    for(int i=0; i<regions.size(); i++)
+    {
+      for(int j=0; j<regions[i].sections.size(); j++)
+      {
+        vector<Instruction*> &check = regions[i].sections[j].definite;
+        if( find(check.begin(), check.end(), inst)!=check.end() )
+          return i;
+        for(int k=0; k<regions[i].sections[j].possibles.size(); k++)
+        {
+          vector<Instruction*> &check = regions[i].sections[j].possibles[k];
+          if( find(check.begin(), check.end(), inst)!=check.end() )
+            return i;
+        }
+      }
+    }
+    return -1;
+  }
+
   static vector<Isomorphism> initialSplit(Block *block)
   {
   vector<Value*> values;
@@ -297,7 +347,7 @@ public:
   // two-stepper
   // 1. ordering block be valIso
   // 2. splitting isomorphism to remove non-matching
-  void incProductions()
+  vector<Isomorphism> incProductions()
   {
     /* We presume that the IsoRegions have been checked down to the possibles blocks,
        so each possibles block within a Section should be isomorphic across all of the
@@ -347,7 +397,67 @@ public:
       for(int j=0; j<valSplit[i].size(); j++)
         sort(valSplit[i][j].begin(), valSplit[i][j].end(), orderVals);
 
+    // TODO: We are restructuring every iso split from this one. We only want to split
+    //       the one that we are keeping, or if we keep the others do each iso relative
+    //       to its first element rather than zero in the second index below.
+    for(int i=0; i<valSplit.size(); i++)  // Foreach isomorphism
+    {
+      for(int j=0; j<valSplit[i][0].size(); ) // Foreach pos in vals proj from possibles
+      {
+        if( j+1 == valSplit[i][0].size() || 
+            !isoValues(valSplit[i][0][j],valSplit[i][0][j+1]) ) 
+        {
+          // Confirm an instruction within every region. For every region find the 
+          // section and possibles position of the newly confirmed instruction.
+          for(int k=0; k<valSplit[i].size(); k++)
+          {
+            Instruction *def = valSplit[i][k][j]->def;
+            int srcRegion  = locate(def);
+            int srcSection = regions[srcRegion].locate(def);
+            printf("Confirm %d,%d,%d<-%d,%d : %s\n", i,j,k, 
+                  srcRegion, srcSection, def->repr().c_str());
+            // Find out where it is in the possibles
+            int srcPosBlock = regions[srcRegion].sections[srcSection].locate(def);
+            vector<Instruction *> &srcBlock = 
+                regions[srcRegion].sections[srcSection].possibles[srcPosBlock];
+            srcBlock.erase( find( srcBlock.begin(), srcBlock.end(), def ));
+            // erase it and push_back to definites.
+            regions[srcRegion].sections[srcSection].definite.push_back(def);
+            // TODO:Haven't propagated to next val, needs to consider boundaries
+          }
+
+
+          j++;
+        }
+        else
+        {
+          // Skip past the isovalues 
+          while( j<valSplit[i][0].size() && 
+                 isoValues(valSplit[i][0][j],valSplit[i][0][j+1]) )
+            j++;
+        }
+        
+      }
+    }
+
+
+    vector<Isomorphism> results;
+    for(int i=0; i<valSplit.size(); i++)
+    {
+      vector<IsoRegion> matches;
+      for(int j=0; j<valSplit[i].size(); j++)
+      {
+        Instruction *creator = valSplit[i][j][0]->def;
+        int idx = locate(creator);
+        matches.push_back(regions[idx]);
+      }
+      results.push_back(Isomorphism(matches));
+    }
+
+    return results;
+
     // Dump the two-step results
+    /*
     for(int i=0; i<valSplit.size(); i++)
     {
       printf("Block %d: (%d)\n", i, valSplit[i].size());
@@ -359,6 +469,7 @@ public:
         printf("\n");
       }
     }
+    */
   }
 
 
@@ -392,7 +503,7 @@ public:
     {
       for(int j=0; j<regions[0].sections[i].definite.size(); j++)
       {
-        sprintf(colName,"style=filled,fillcolor=\"/purples8/%d\"",defCounter+2); 
+        sprintf(colName,"style=filled,fillcolor=\"/purples6/%d\"",defCounter+2); 
         RegionX r = RegionX(block,colName);
         for(int k=0; k<regions.size(); k++)
           r.mark(regions[k].sections[i].definite[j]);
@@ -488,7 +599,12 @@ vector<Isomorphism> isos = Isomorphism::initialSplit(block);
   // Compare instructions in a partition block by comparing their
   // produced values to see if they look isomorphic.
   // ...This should split the adds...
-  isos[4].incProductions();
+  isos = isos[4].incProductions();
+  for(int i=0; i<isos.size(); i++)
+  {
+    printf("ISO %d\n",i);
+    isos[i].dump(); 
+  }
 
   // Compare boundaries to possibles instructions according to a simple
   // classification [ Section(n) within iso (diff region) | Section(n) (same)
@@ -517,7 +633,7 @@ vector<Isomorphism> isos = Isomorphism::initialSplit(block);
   remainder.markConstants();
   remainder.expandToDepth(64);
   fprintf(f,"digraph {\n");
-  vector<RegionX> isoPop = isos[4].eqClassRegions(block);
+  vector<RegionX> isoPop = isos[0].eqClassRegions(block);  // TODO: Keep changing!!
   for(int i=0; i<isoPop.size(); i++)
   {
     char colour[32];
