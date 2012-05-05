@@ -139,25 +139,6 @@ vector<vector<Instruction*> > possibles;
     sort(possibles.begin(), possibles.end(), orderPos);
   }
 
-  vector<Value*> confirm()
-  {
-    vector<Value*> orderedVals;
-    for(int i=0; i<possibles.size(); )
-      if(possibles[i].size()==1)
-      {
-        definite.push_back(possibles[i][0]);
-        // When we confirm an instruction, it's outputs are strictly ordered so can
-        // be confirmed as well. As the block is SSA each confirmed Value only has
-        // an incoming edge from the confirmed instruction.
-        for(int j=0; j<possibles[i][0]->outputs.size(); j++)
-          orderedVals.push_back(possibles[i][0]->outputs[j]);
-        possibles.erase( possibles.begin()+i );
-      }
-      else
-        i++;
-    return orderedVals;
-  }
-
   int locate(Instruction *inst)
   {
     for(int i=0; i<possibles.size(); i++)
@@ -167,6 +148,46 @@ vector<vector<Instruction*> > possibles;
         return i;
     }
     return -1;
+  }
+
+  /* Check each block in the possible partitions for size. The assumption is that the
+     order of blocks in the possibles partition is isomorphic across the regions. Where 
+     the choice consists of a single option the instruction in the block is isormophic
+     to the same identified instructions in other regions. So the ordered list of
+     instructions returned is isomorphic when the function is called in an isoloop.
+  */
+  vector<Instruction*> hobsonsChoices()
+  {
+    vector<Instruction*> result;
+    for(int i=0; i<possibles.size(); i++)
+      if(possibles[i].size()==1)
+        result.push_back(possibles[i][0]);
+    return result;
+  }
+
+  /* We can't convert the produced values into Sections here as they are owned by the
+     parent container so assume the caller does it. Locate the block inside the 
+     possibles partition that contains the instruction and move it into definite.
+     When this is executed in an isoloop across regions the assumption is that the
+     instructions passed to each iteration are isomorphic, thus the resulting 
+     transformation on the section moves the same instruction, from isomorphic blocks
+     of possibles into the same index in definite: thus it is iso-preserving.
+  */
+  void confirm(Instruction *inst)
+  {
+    for(int i=0; i<possibles.size(); i++)
+    {
+      vector<Instruction*>::iterator pos = 
+                            find(possibles[i].begin(), possibles[i].end(), inst);
+      if(pos!=possibles[i].end())
+      {
+        definite.push_back(*pos);
+        possibles[i].erase(pos);
+        return;
+      }
+    }
+    printf("INTERNAL ERROR: value not in section possibles\n");
+    exit(-1);
   }
 };
 
@@ -201,16 +222,31 @@ public:
     return -1;
   }
 
+  // Example of a novel language construct:
+  //   Set of operations begin carried out across a set of data
+  //   Stronger form of a vector operation
+  //   Assumes the data-set is isomorphic as a pre-condition
+  //   The transformatio being vectorised is isomorphism preserving
+  // This implies that control-flow decisions that affect the transformation must
+  // be taken in lockstep, either because we know the same structure is present or
+  // because we check in advance and split the isomorphism.
+
+  /* The outer loop is an isoloop. The two calls inside are isopreserving transforms
+     on the sections. Cache the sections size as we are growing it when we add values.
+  */
   void confirm()
   {
-    vector<Value*> newHeads;
-    for(int i=0; i<sections.size(); i++)
+    int nsections = sections.size();
+    for(int i=0; i<nsections; i++)
     {
-      vector<Value*> partial = sections[i].confirm();
-      newHeads.insert( newHeads.end(), partial.begin(), partial.end() );
+      vector<Instruction*> newDefs = sections[i].hobsonsChoices();
+      for(int j=0; j<newDefs.size(); j++)
+      {
+        sections[i].confirm(newDefs[j]);
+        for(int k=0; k<newDefs[j]->outputs.size(); k++)
+          sections.push_back( Section(newDefs[j]->outputs[k]) );
+      }
     }
-    for(int i=0; i<newHeads.size(); i++)
-      sections.push_back( Section(newHeads[i]) );
   }
 
 };
