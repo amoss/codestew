@@ -517,9 +517,23 @@ public:
     }
   }
 
-  // two-stepper
-  // 1. ordering block be valIso
-  // 2. splitting isomorphism to remove non-matching
+  /* Precondition: For every pair of IsoRegion $r_1,r_2$ within the Isomorphism the 
+                   relation $\left| s(r_1) \right| = \left| s(r_2) \right|$ holds where
+                   $s(r)$ is the vector of Sections within the IsoRegion, and also over
+                   the pairs zip($s(r_1)$,$s(r_2)$) the following approximation of 
+                   isomorphism holds, the head Value is 1-depth isomorphic to the head
+                   Value on the right (matching degree, type and distribution of using
+                   instructions), with the same distribution of using instructions into
+                   the ordered definite vector, and the block-ordered possibles 
+                   partition.
+    Action: The isomorphism between structures is only a (local) approximation of graph
+            isomorphism. Although the instructions inside each block of each possibles
+            partition of each section are locally indistinguishable there is a frontier
+            of values that they produce in the graph. These values may be distinguishable
+            in which case the Isomorphism splits into multiple pieces, partitions by 
+            which subsets of the IsoRegions also have indistinguishable value frontiers.
+                   
+  */
   vector<Isomorphism> incProductions()
   {
     // Assume that all IsoRegions are currently matching so pick an arbitrary region
@@ -530,23 +544,18 @@ public:
     int sIdx = blImages[0].first;
     int pIdx = blImages[0].second;
 
-    // Inner vector is producers of values in one block of a possibles partition.
     // Flat-list of blocks from <iso=this,region=*,section=sIdx,posblock=pIdx>
-    // Each block contains a set of isomorphic instructions within a region, each block
-    // is indistinguishable using the current iso-approximation. The frontier is the
-    // set of values produced from these instructions. The goal is to check if the 
-    // frontier can be split by an isomorphism approximation over the values.
+    // The Frontier is three levels of vectors, outermost is equality classes over the
+    // partitions of Values, middle is regions, innermost is value distribution??
     vector< vector<Instruction*> > producers = slicePosBlocks(sIdx,pIdx);
     vector< vector<Value*> > productions     = mapBlocksToProds(producers);
 typedef Partition< vector<Value*> > ValueFrontier ;
     ValueFrontier valSplit = ValueFrontier(productions,eqValBlock);
     valSplit.forallElements( sortVals );
 
-    // A block in the frontier partition is a set of isomorphic frontiers. The blocks
-    // split the IsoRegions of this Isomorphism according to observable differences in
-    // the distribution of Values within the frontier. Each block is a vector (unordered
-    // set) of Value distributions, one per IsoRegion. Each distribution is a vector of
+    // Each distribution is a vector of
     // Values (ordered by an arbitrary but canonical ordering) to allow comparison.
+    vector<Isomorphism> results;
     for(int i=0; i<valSplit.nblocks(); i++)  // Foreach iso-split in values partition
     {
       vector<vector<Value* > > const &isoVDists = valSplit.block(i);
@@ -567,37 +576,22 @@ typedef Partition< vector<Value*> > ValueFrontier ;
         }
         j++; // else branch leaves j on the last index in a multiple-value block
       }
-    }
 
-    vector<Isomorphism> results;
-    for(int i=0; i<valSplit.nblocks(); i++)
-    {
       vector<IsoRegion> matches;
-      for(int j=0; j<valSplit.block(i).size(); j++)
+      for(int j=0; j<isoVDists.size(); j++)
       {
-        Instruction *creator = valSplit.block(i)[j][0]->def;
+        Instruction *creator = isoVDists[j][0]->def;
         int idx = locate(creator);
         matches.push_back(regions[idx]);
       }
       results.push_back(Isomorphism(matches));
     }
 
-    return results;
+    // Index 1: Sections / Possibles blocks is an irregular shape, flat choice
+    // Index 2: Choice of which instructions solidify, to be driven by heuristics later
+    // Current State Iso -> Index 1 -> (Index 2 -> New Iso Collection)
 
-    // Dump the two-step results
-    /*
-    for(int i=0; i<valSplit.size(); i++)
-    {
-      printf("Block %d: (%d)\n", i, valSplit[i].size());
-      for(int j=0; j<valSplit[i].size(); j++)
-      {
-        printf("  ");
-        for(int k=0; k<valSplit[i][j].size(); k++)
-          printf("%s,%zu ",valSplit[i][j][k]->repr().c_str(), valSplit[i][j][k]->uses.size());
-        printf("\n");
-      }
-    }
-    */
+    return results;
   }
 
 
