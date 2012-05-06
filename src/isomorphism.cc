@@ -31,6 +31,7 @@ bool isoInsts(Instruction *a, Instruction *b)
 
 // Given a collection of T in source split them into a partition of equivalence
 // classes according to the relation eq.
+// TODO: Push everything over to the Partition class and remove this code.
 template<typename T>
 vector<vector<T> > partition(vector<T> source, bool (*eq)(T,T))
 {
@@ -84,6 +85,11 @@ bool orderVals(Value *a, Value *b)
   if( a->uses.size() < b->uses.size() )
     return true;
   return false;
+}
+
+void sortVals(vector<Value*> vals)
+{
+  sort(vals.begin(), vals.end(), orderVals);
 }
 
 // Higher-order version of isoVals. Compares blocks of vals within a partition.
@@ -304,6 +310,63 @@ bool eqRegions( IsoRegion i1, IsoRegion i2)
   return true;
 }
 
+template<typename T>
+class Partition
+{
+vector< vector<T> > blocks;
+public:
+  /* An equality relation over the source set is provided, no assumption of ordering
+     is made. Basic binning approach O(n^2), worst case is no elements are equal.
+  */
+  Partition( vector<T> source, bool (*eq)(T,T) )
+  {
+    for(int i=0; i<source.size(); i++)
+    {
+      // See if there is a bin holding the equivalence class for this element
+      int j=0;
+      for(; j<blocks.size(); j++)
+        if(eq(source[i],blocks[j][0]))
+        {
+          blocks[j].push_back(source[i]);
+          break;
+        }
+      // If there was no bin then create a new one with this element in it
+      if(j==blocks.size())
+      {
+        vector<T> newBin;
+        newBin.push_back(source[i]);
+        blocks.push_back(newBin);
+      }
+    }
+  }
+
+  void forallElements( void (*process)(T) )
+  {
+    for(int i=0; i<blocks.size(); i++)
+      for(int j=0; j<blocks[i].size(); j++)
+        process(blocks[i][j]);
+  }
+
+  int nblocks()
+  {
+    return blocks.size();
+  }
+
+  vector<T> const &block(int i)
+  {
+    return blocks[i];
+  }
+};
+
+template<typename T>
+vector<T> slice2(vector< vector<T> > const &source, int idx)
+{
+vector<T> result;
+  for(int i=0; i<source.size(); i++)
+    result.push_back(source[i][idx]);
+  return result;
+}
+
 // Contains a set of Canon object - each represents a region in the same block and
 // a canonisation of the vertices to allow the isomorphic mapping between them.
 class Isomorphism
@@ -431,6 +494,29 @@ public:
     return result;
   }
 
+  void confirmAllProds( vector<Value*> vals)
+  {
+    for(int i=0; i<vals.size(); i++)
+    {
+      Instruction *inst = vals[i]->def;
+      int srcRegion  = locate(inst);
+      int srcSection = regions[srcRegion].locate(inst);
+      regions[srcRegion].sections[srcSection].confirm(inst);
+      // TODO: Not handling Values -> Section.heads at all...
+    }
+  }
+
+  // Probably not used, less specialised version of confirmAllProds
+  void confirmAll( vector<Instruction*> insts)
+  {
+    for(int i=0; i<insts.size(); i++)
+    {
+      int srcRegion  = locate(insts[i]);
+      int srcSection = regions[srcRegion].locate(insts[i]);
+      regions[srcRegion].sections[srcSection].confirm(insts[i]);
+    }
+  }
+
   // two-stepper
   // 1. ordering block be valIso
   // 2. splitting isomorphism to remove non-matching
@@ -444,73 +530,52 @@ public:
     int sIdx = blImages[0].first;
     int pIdx = blImages[0].second;
 
+    // Inner vector is producers of values in one block of a possibles partition.
+    // Flat-list of blocks from <iso=this,region=*,section=sIdx,posblock=pIdx>
+    // Each block contains a set of isomorphic instructions within a region, each block
+    // is indistinguishable using the current iso-approximation. The frontier is the
+    // set of values produced from these instructions. The goal is to check if the 
+    // frontier can be split by an isomorphism approximation over the values.
     vector< vector<Instruction*> > producers = slicePosBlocks(sIdx,pIdx);
     vector< vector<Value*> > productions     = mapBlocksToProds(producers);
+typedef Partition< vector<Value*> > ValueFrontier ;
+    ValueFrontier valSplit = ValueFrontier(productions,eqValBlock);
+    valSplit.forallElements( sortVals );
 
-
-    // Sort each block of Values projected from the Instruction blocks, then partition
-    // by equality between blocks.
-    vector< vector< vector<Value* > > > valSplit =
-                                    partition< vector<Value*> >(productions, eqValBlock);
-    for(int i=0; i<valSplit.size(); i++)
-      for(int j=0; j<valSplit[i].size(); j++)
-        sort(valSplit[i][j].begin(), valSplit[i][j].end(), orderVals);
-
-    // Ideas for refactoring:
-    //   Confirming each of the possibles instructions
-    //   Slicing?
-
-    // TODO: We are restructuring every iso split from this one. We only want to split
-    //       the one that we are keeping, or if we keep the others do each iso relative
-    //       to its first element rather than zero in the second index below.
-    for(int i=0; i<valSplit.size(); i++)  // Foreach isomorphism
+    // A block in the frontier partition is a set of isomorphic frontiers. The blocks
+    // split the IsoRegions of this Isomorphism according to observable differences in
+    // the distribution of Values within the frontier. Each block is a vector (unordered
+    // set) of Value distributions, one per IsoRegion. Each distribution is a vector of
+    // Values (ordered by an arbitrary but canonical ordering) to allow comparison.
+    for(int i=0; i<valSplit.nblocks(); i++)  // Foreach iso-split in values partition
     {
-      for(int j=0; j<valSplit[i][0].size(); ) // Foreach pos in vals proj from possibles
+      vector<vector<Value* > > const &isoVDists = valSplit.block(i);
+
+      // The distribution was sorted into order, but not partitioned by equality. Find
+      // values in the first distribution that are unique (the partitioning step
+      // guarantees that all other regions in this partition block have their unique
+      // values in the same positions).
+      for(int j=0; j<isoVDists[0].size(); ) // Foreach pos in vals proj from possibles
       {
-        if( j+1 == valSplit[i][0].size() || 
-            !isoValues(valSplit[i][0][j],valSplit[i][0][j+1]) ) 
-        {
-          // Confirm an instruction within every region. For every region find the 
-          // section and possibles position of the newly confirmed instruction.
-          for(int k=0; k<valSplit[i].size(); k++)
-          {
-            Instruction *def = valSplit[i][k][j]->def;
-            int srcRegion  = locate(def);
-            int srcSection = regions[srcRegion].locate(def);
-            printf("Confirm %d,%d,%d<-%d,%d : %s\n", i,j,k, 
-                  srcRegion, srcSection, def->repr().c_str());
-            // Find out where it is in the possibles
-            int srcPosBlock = regions[srcRegion].sections[srcSection].locate(def);
-            vector<Instruction *> &srcBlock = 
-                regions[srcRegion].sections[srcSection].possibles[srcPosBlock];
-            srcBlock.erase( find( srcBlock.begin(), srcBlock.end(), def ));
-            // erase it and push_back to definites.
-            regions[srcRegion].sections[srcSection].definite.push_back(def);
-            // TODO:Haven't propagated to next val, needs to consider boundaries
-          }
-
-
-          j++;
-        }
+        if( j+1==isoVDists[0].size() || !isoValues(isoVDists[0][j],isoVDists[0][j+1]) ) 
+          confirmAllProds( slice2<Value*>(isoVDists,j) );
         else
         {
-          // Skip past the isovalues 
-          while( j<valSplit[i][0].size() && 
-                 isoValues(valSplit[i][0][j],valSplit[i][0][j+1]) )
+          // Skip all values that are not unique under the equivalence relation
+          while( j<isoVDists[0].size() && isoValues(isoVDists[0][j],isoVDists[0][j+1]) )
             j++;
         }
-        
+        j++; // else branch leaves j on the last index in a multiple-value block
       }
     }
 
-
     vector<Isomorphism> results;
-    for(int i=0; i<valSplit.size(); i++)
+    for(int i=0; i<valSplit.nblocks(); i++)
     {
       vector<IsoRegion> matches;
-      for(int j=0; j<valSplit[i].size(); j++)
+      for(int j=0; j<valSplit.block(i).size(); j++)
       {
-        Instruction *creator = valSplit[i][j][0]->def;
+        Instruction *creator = valSplit.block(i)[j][0]->def;
         int idx = locate(creator);
         matches.push_back(regions[idx]);
       }
