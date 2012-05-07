@@ -616,9 +616,9 @@ RegionX allconst(block);
     tt.markExecutable();
     tt.subtract(&allconst);
     printf("d%d: %llu %llu  %s\n", i, tt.markedInsts(), tt.markedVals(), block->getValue(i)->repr().c_str());
-    char filename[128];
-    sprintf(filename,"crap-d%d.dot",i);
-    tt.dot(filename);
+    //char filename[128];
+    //sprintf(filename,"crap-d%d.dot",i);
+    //tt.dot(filename);
   }
 
 RegionX header(block);

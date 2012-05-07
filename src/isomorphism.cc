@@ -1,5 +1,6 @@
 #include "vis.h"
 #include <stdio.h>
+#include <algorithm>
 
 using namespace std;
 
