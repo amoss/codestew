@@ -30,6 +30,16 @@ bool isoInsts(Instruction *a, Instruction *b)
   return true;
 }
 
+bool eqInstVal(Instruction *a, Instruction *b)
+{
+  if(!isoInsts(a,b))
+    return false;
+  for(int i=0; i<a->outputs.size(); i++)
+    if(!isoValues(a->outputs[i], b->outputs[i]))
+      return false;
+  return true;
+}
+
 // Given a collection of T in source split them into a partition of equivalence
 // classes according to the relation eq.
 // TODO: Push everything over to the Partition class and remove this code.
@@ -196,6 +206,34 @@ vector<vector<Instruction*> > possibles;
     printf("INTERNAL ERROR: value not in section possibles\n");
     exit(-1);
   }
+
+  /* Precondition: The possibles partition is currently into blocks of instructions
+                   that are 1-depth isomorphic (isoInsts relation).
+     Action: The set of values produced by the instructions in each block are compared
+             using isoValues for 1-depth isomorphism. The possibles partition is
+             updated so that instructions in each block are isomorphic and their 
+             produced values.
+     Postcondition: The Isomorphism containing these sections may have IsoRegions that
+                    can now be distinguished.
+  */
+  void incProductions()
+  {
+    vector< vector< Instruction* > > newPart;
+    for(int i=0; i<possibles.size(); i++)
+    {
+      vector<vector<Instruction*> > split = 
+          partition<Instruction*>(possibles[i], eqInstVal);
+      printf("Split %d into %d", possibles[i].size(), split.size());
+      for(int j=0; j<split.size(); j++)
+      {
+        printf(" %d",split[j].size());
+        newPart.push_back(split[j]);
+      }
+      printf("\n");
+    }
+    possibles = newPart;
+  }
+
 };
 
 class IsoRegion
@@ -537,6 +575,21 @@ public:
   */
   vector<Isomorphism> incProductions()
   {
+    // Resplit possibles partitions according to produced values
+    for(int i=0; i<regions.size(); i++)
+      for(int j=0; j<regions[i].sections.size(); j++)
+        regions[i].sections[j].incProductions();
+
+    // Solidify any instructions that are now in singleton blocks
+    for(int i=0; i<regions.size(); i++)
+      regions[i].confirm();
+ 
+    dump();
+    return distinguish();
+  }
+
+  /*
+
     // Assume that all IsoRegions are currently matching so pick an arbitrary region
     // to scan for the possibles blocks.
     vector< pair<int,int> > blImages = possiblesBlocks(0);
@@ -600,6 +653,7 @@ typedef Partition< vector<Value*> > ValueFrontier ;
 
     return results;
   }
+  */
 
 
   // Find singeleton blocks of possible instructions - as these are singleton they map
@@ -673,7 +727,7 @@ typedef Partition< vector<Value*> > ValueFrontier ;
         vector<vector<Instruction*> > &useBins = cur.sections[k].possibles;
         for(int k=0; k<useBins.size(); k++)
         {
-          printf("    ");
+          printf("    >");
           for(int l=0; l<useBins[k].size(); l++)
             printf("%s ",useBins[k][l]->repr().c_str());
           printf("\n");
