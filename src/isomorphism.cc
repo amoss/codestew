@@ -554,8 +554,14 @@ typedef Partition< vector<Value*> > ValueFrontier ;
     ValueFrontier valSplit = ValueFrontier(productions,eqValBlock);
     valSplit.forallElements( sortVals );
 
+    // IF WE RESTRUCTURE THE POSSIBLES PARTITION AT THIS POINT:
+    //   The following loop should just be a specialised version of.
+    //     1. confirm()
+    //     2. distinguish() -> make vector<Isomorphism> from differences in dists
+    //   But distinguish() is currently responsible for the partitioning step. 
     // Each distribution is a vector of
     // Values (ordered by an arbitrary but canonical ordering) to allow comparison.
+
     vector<Isomorphism> results;
     for(int i=0; i<valSplit.nblocks(); i++)  // Foreach iso-split in values partition
     {
