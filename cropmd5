@@ -1,4 +1,5 @@
 #!/bin/bash
 make build/md5 && \
 build/md5 md5 src && \
+dot -Tpdf -ocrap2.pdf crap2.dot && \
 gs -o cropped.pdf -sDEVICE=pdfwrite -dDEVICEWIDTHPOINTS=4000 -dDEVICEHEIGHTPOINTS=10000 -dFIXEDMEDIA -c "24 72 translate 0 0 4000 10000 rectclip" -f crap2.pdf

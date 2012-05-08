@@ -190,6 +190,14 @@ vector<vector<Instruction*> > possibles;
      transformation on the section moves the same instruction, from isomorphic blocks
      of possibles into the same index in definite: thus it is iso-preserving.
   */
+  /* Precondition:
+     Action:
+     Postcondition: The Value* returned are candidates for new Section::heads. The relationship
+                    between the observable isomorphism on the IsoRegions (and by implication
+                    the pair-wise relationship over their Sections) is implicitly dependent upon
+                    the order of the Sections within the IsoRegion. The order of the Value* returned
+                    in this call determines the order of the Sections created.
+  */
   void confirm(Instruction *inst)
   {
     for(int i=0; i<possibles.size(); i++)
@@ -284,8 +292,11 @@ public:
   /* The outer loop is an isoloop. The two calls inside are isopreserving transforms
      on the sections. Cache the sections size as we are growing it when we add values.
   */
-  void confirm(bool push)
+
+
+  vector<Value*> confirm()
   {
+    vector<Value*> produced;
     int nsections = sections.size();
     for(int i=0; i<nsections; i++)
     {
@@ -293,11 +304,13 @@ public:
       for(int j=0; j<newDefs.size(); j++)
       {
         sections[i].confirm(newDefs[j]);
-        if(push)
-          for(int k=0; k<newDefs[j]->outputs.size(); k++)
-            sections.push_back( Section(newDefs[j]->outputs[k]) );
+        copy( newDefs[j]->outputs.begin(), newDefs[j]->outputs.end(), back_inserter(produced) );
+        //if(push)
+        //  for(int k=0; k<newDefs[j]->outputs.size(); k++)
+        //    sections.push_back( Section(newDefs[j]->outputs[k]) );
       }
     }
+    return produced;
   }
 
   void dump()
@@ -616,7 +629,10 @@ public:
 
     // Solidify any instructions that are now in singleton blocks
     for(int i=0; i<regions.size(); i++)
-      regions[i].confirm(false);
+    {
+      vector<Value*> orderedProds = regions[i].confirm();
+      // FILTERING
+    }
  
     dump();
     return distinguish();
@@ -633,13 +649,8 @@ public:
   {
     for(int i=0; i<regions.size(); i++)
     {
-      regions[i].confirm(push);
-      /*if(!regions[i].valid())
-      {
-        printf("SHIT GONE BAD %d\n",i);
-        regions[i].dump();
-        exit(-1);
-      }*/
+      vector<Value*> orderedProds = regions[i].confirm();
+      // FILTERING
     }
   }
 
