@@ -223,15 +223,9 @@ vector<vector<Instruction*> > possibles;
     vector< vector< Instruction* > > newPart;
     for(int i=0; i<possibles.size(); i++)
     {
-      vector<vector<Instruction*> > split = 
-          partition<Instruction*>(possibles[i], eqInstVal);
-      printf("Split %d into %d", possibles[i].size(), split.size());
+      vector<vector<Instruction*> > split = partition<Instruction*>(possibles[i], eqInstVal);
       for(int j=0; j<split.size(); j++)
-      {
-        printf(" %d",split[j].size());
         newPart.push_back(split[j]);
-      }
-      printf("\n");
     }
     possibles = newPart;
   }
@@ -290,7 +284,7 @@ public:
   /* The outer loop is an isoloop. The two calls inside are isopreserving transforms
      on the sections. Cache the sections size as we are growing it when we add values.
   */
-  void confirm()
+  void confirm(bool push)
   {
     int nsections = sections.size();
     for(int i=0; i<nsections; i++)
@@ -299,8 +293,9 @@ public:
       for(int j=0; j<newDefs.size(); j++)
       {
         sections[i].confirm(newDefs[j]);
-        for(int k=0; k<newDefs[j]->outputs.size(); k++)
-          sections.push_back( Section(newDefs[j]->outputs[k]) );
+        if(push)
+          for(int k=0; k<newDefs[j]->outputs.size(); k++)
+            sections.push_back( Section(newDefs[j]->outputs[k]) );
       }
     }
   }
@@ -621,79 +616,11 @@ public:
 
     // Solidify any instructions that are now in singleton blocks
     for(int i=0; i<regions.size(); i++)
-      regions[i].confirm();
+      regions[i].confirm(false);
  
     dump();
     return distinguish();
   }
-
-  /*
-
-    // Assume that all IsoRegions are currently matching so pick an arbitrary region
-    // to scan for the possibles blocks.
-    vector< pair<int,int> > blImages = possiblesBlocks(0);
-
-    // TODO: The tail of this function needs to look over elements in blImages
-    int sIdx = blImages[0].first;
-    int pIdx = blImages[0].second;
-
-    // Flat-list of blocks from <iso=this,region=*,section=sIdx,posblock=pIdx>
-    // The Frontier is three levels of vectors, outermost is equality classes over the
-    // partitions of Values, middle is regions, innermost is value distribution??
-    vector< vector<Instruction*> > producers = slicePosBlocks(sIdx,pIdx);
-    vector< vector<Value*> > productions     = mapBlocksToProds(producers);
-typedef Partition< vector<Value*> > ValueFrontier ;
-    ValueFrontier valSplit = ValueFrontier(productions,eqValBlock);
-    valSplit.forallElements( sortVals );
-
-    // IF WE RESTRUCTURE THE POSSIBLES PARTITION AT THIS POINT:
-    //   The following loop should just be a specialised version of.
-    //     1. confirm()
-    //     2. distinguish() -> make vector<Isomorphism> from differences in dists
-    //   But distinguish() is currently responsible for the partitioning step. 
-    // Each distribution is a vector of
-    // Values (ordered by an arbitrary but canonical ordering) to allow comparison.
-
-    vector<Isomorphism> results;
-    for(int i=0; i<valSplit.nblocks(); i++)  // Foreach iso-split in values partition
-    {
-      vector<vector<Value* > > const &isoVDists = valSplit.block(i);
-
-      // The distribution was sorted into order, but not partitioned by equality. Find
-      // values in the first distribution that are unique (the partitioning step
-      // guarantees that all other regions in this partition block have their unique
-      // values in the same positions).
-      for(int j=0; j<isoVDists[0].size(); ) // Foreach pos in vals proj from possibles
-      {
-        if( j+1==isoVDists[0].size() || !isoValues(isoVDists[0][j],isoVDists[0][j+1]) ) 
-          confirmAllProds( slice2<Value*>(isoVDists,j) );
-        else
-        {
-          // Skip all values that are not unique under the equivalence relation
-          while( j<isoVDists[0].size() && isoValues(isoVDists[0][j],isoVDists[0][j+1]) )
-            j++;
-        }
-        j++; // else branch leaves j on the last index in a multiple-value block
-      }
-
-      vector<IsoRegion> matches;
-      for(int j=0; j<isoVDists.size(); j++)
-      {
-        Instruction *creator = isoVDists[j][0]->def;
-        int idx = locate(creator);
-        matches.push_back(regions[idx]);
-      }
-      results.push_back(Isomorphism(matches));
-    }
-
-    // Index 1: Sections / Possibles blocks is an irregular shape, flat choice
-    // Index 2: Choice of which instructions solidify, to be driven by heuristics later
-    // Current State Iso -> Index 1 -> (Index 2 -> New Iso Collection)
-
-    return results;
-  }
-  */
-
 
   // Find singeleton blocks of possible instructions - as these are singleton they map
   // to exactly one instruction in each Canon within the Isomorphism. Move them into
@@ -702,11 +629,11 @@ typedef Partition< vector<Value*> > ValueFrontier ;
   // identical structure upto and including the layout of blocks inside the possibles
   // partition. This implies that calling confirm() on each Canon will produce an 
   // equivalent transformation.
-  void confirm()
+  void confirm(bool push)
   {
     for(int i=0; i<regions.size(); i++)
     {
-      regions[i].confirm();
+      regions[i].confirm(push);
       /*if(!regions[i].valid())
       {
         printf("SHIT GONE BAD %d\n",i);
@@ -825,7 +752,7 @@ vector<Isomorphism> isos = Isomorphism::initialSplit(block);
 
   // Push singleton blocks from possibles to definites...
   for(int i=0; i<isos.size(); i++)
-    isos[i].confirm();  
+    isos[i].confirm(true);  
   threshold(isos, 5, -1);    
   isos[4].dump(); 
 

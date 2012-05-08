@@ -608,14 +608,14 @@ RegionX tt(block);
 RegionX allconst(block);
   allconst.clear();
   allconst.markExecutable();
-  printf("allconst: %llu %llu\n", allconst.markedInsts(), allconst.markedVals());
+  //printf("allconst: %llu %llu\n", allconst.markedInsts(), allconst.markedVals());
   for(int i=0; i<block->numValues(); i++)
   {
     tt.clear();
     tt.markValue(i);
     tt.markExecutable();
     tt.subtract(&allconst);
-    printf("d%d: %llu %llu  %s\n", i, tt.markedInsts(), tt.markedVals(), block->getValue(i)->repr().c_str());
+    //printf("d%d: %llu %llu  %s\n", i, tt.markedInsts(), tt.markedVals(), block->getValue(i)->repr().c_str());
     //char filename[128];
     //sprintf(filename,"crap-d%d.dot",i);
     //tt.dot(filename);
