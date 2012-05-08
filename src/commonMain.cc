@@ -19,7 +19,7 @@ bool makeSource(Block &block, SimpleMachine &machine);
 int main(int argc, char **argv)
 {
   SimpleMachine machine;
-  Block block(machine);
+  Block block = Block(machine);
   if(argc < 3) {
     printf("cogen: basename machine\n");
     return -1;

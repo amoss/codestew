@@ -86,9 +86,10 @@ protected:
   std::vector<Instruction*> insts;
   std::vector<Value*> values;
   std::vector<uint64> inputs, outputs;
-  Machine &machine;
 
 public:
+  Machine &machine;   // Cannot remember why this was protected...
+
   Block( Machine &m ) : machine(m) {}
   Value *value(Type *type);
   Value *constant(Type *type, uint64 init);

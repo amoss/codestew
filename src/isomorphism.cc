@@ -756,6 +756,53 @@ void threshold( vector<Isomorphism> &isos, int minCommon, int minPop)
   }
 }
 
+Instruction *fold(Block *graph, RegionX *marked)
+{
+}
+
+// Value ordering in the new block:
+//   index <-> index of section with value as head
+// Instruction ordering:
+//   index <-> section idx, definite idx within :: irregular stride
+// Input ordering:
+//   scan inst in order, scan sources in order, each val outside region is input
+// Output ordering:
+//   scan inst in order, scan targets in order, each val outside region is output
+
+void fold(Isomorphism *iso, Block *block)
+{
+int n = iso->regions.size();
+vector<vector<Value*> > vals;
+  // Assume all IsoRegions have the same Section layout
+  for(int i=0; i<iso->regions[0].sections.size(); i++)
+  {
+    vector<Value*> headSlice;
+    for(int j=0; j<n; j++)
+      headSlice.push_back( iso->regions[j].sections[i].head );
+    vals.push_back( headSlice );
+  }
+vector<vector<Instruction*> > insts;
+  for(int i=0; i<iso->regions[0].sections.size(); i++)
+  {
+    for(int j=0; j<iso->regions[0].sections[i].definite.size(); j++)
+    {
+      vector<Instruction*> sectionDefs;
+      for(int k=0; k<n; k++)
+        sectionDefs.push_back( iso->regions[k].sections[i].definite[j] );
+      insts.push_back( sectionDefs );
+    }
+  }
+Block *inside = new Block(block->machine);
+vector<Instruction *> newInsts;
+  for(int i=0; i<insts.size(); i++)
+    newInsts.push_back( new Instruction(inside,insts[i][0]->opcode) );
+vector<Value*> newVals;
+  for(int i=0; i<vals.size(); i++)
+    newVals.push_back( new Value(vals[i][0]->type) );
+
+  // Structure is still missing... inputs/outputs sources/targets defs/uses...
+}
+
 void isoEntry(Block *block)
 {
 vector<Isomorphism> isos = Isomorphism::initialSplit(block);

@@ -312,10 +312,10 @@ void RegionX::dotColourSet(FILE *f, char *name)
   for(int i=0; i<nvals; i++)
   {
     if( vals[i] && vStyle.length()==0)
-      fprintf(f,"v%d [style=filled,color=\"%s\",label=\"%d : %s\"];\n", i, name, i, 
+      fprintf(f,"v%d [fontsize=32,style=filled,color=\"%s\",label=\"%d : %s\"];\n", i, name, i, 
                 block->getValue(i)->type->repr().c_str());
     if( vals[i] && vStyle.length()>0)
-      fprintf(f,"v%d [%s,label=\"%d : %s\"];\n", i, vStyle.c_str(), i, 
+      fprintf(f,"v%d [fontsize=32,%s,label=\"%d : %s\"];\n", i, vStyle.c_str(), i, 
                 block->getValue(i)->type->repr().c_str());
   }
 
@@ -325,10 +325,10 @@ void RegionX::dotColourSet(FILE *f, char *name)
       continue;
     Instruction *inst = block->getInst(i);
     if(vStyle.length()==0)
-      fprintf(f,"i%d [shape=rect,style=filled,fillcolor=\"%s\",label=\"%s\"];\n", 
+      fprintf(f,"i%d [fontsize=32,shape=rect,style=filled,fillcolor=\"%s\",label=\"%s\"];\n", 
                 i, name, inst->opcode->name);
     else
-      fprintf(f,"i%d [shape=rect,%s,label=\"%s\"];\n", 
+      fprintf(f,"i%d [fontsize=32,shape=rect,%s,label=\"%s\"];\n", 
                 i, vStyle.c_str(), inst->opcode->name);
     for(int j=0; j<inst->inputs.size(); j++)
       fprintf(f,"v%llu -> i%d;\n", inst->inputs[j]->ref, i);
