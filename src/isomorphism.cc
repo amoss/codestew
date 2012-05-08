@@ -280,6 +280,14 @@ public:
     return -1;
   }
 
+  int locate(Value *val)
+  {
+    for(int i=0; i<sections.size(); i++)
+      if( sections[i].head==val)
+        return i;
+    return -1;
+  }
+
   // Example of a novel language construct:
   //   Set of operations begin carried out across a set of data
   //   Stronger form of a vector operation
@@ -499,6 +507,14 @@ public:
     return -1;
   }
 
+  int locate(Value *val)
+  {
+    for(int i=0; i<regions.size(); i++)
+      if( regions[i].locate(val)!=-1 )
+        return i;
+    return -1;
+  }
+
   static vector<Isomorphism> initialSplit(Block *block)
   {
   vector<Value*> values;
@@ -628,11 +644,7 @@ public:
         regions[i].sections[j].incProductions();
 
     // Solidify any instructions that are now in singleton blocks
-    for(int i=0; i<regions.size(); i++)
-    {
-      vector<Value*> orderedProds = regions[i].confirm();
-      // FILTERING
-    }
+    confirm();
  
     dump();
     return distinguish();
@@ -645,12 +657,25 @@ public:
   // identical structure upto and including the layout of blocks inside the possibles
   // partition. This implies that calling confirm() on each Canon will produce an 
   // equivalent transformation.
-  void confirm(bool push)
+  void confirm()
   {
     for(int i=0; i<regions.size(); i++)
     {
       vector<Value*> orderedProds = regions[i].confirm();
-      // FILTERING
+      // Filter out any Values that are already Section::head in any IsoRegion
+      for(vector<Value*>::iterator i = orderedProds.begin(); i!=orderedProds.end() ; )
+        if(locate(*i)==-1)
+          ++i;
+        else
+          i = orderedProds.erase(i);
+      // Promote non-overlapping Values to Section::heads
+      for(int i=0; i<orderedProds.size(); i++)
+      {
+        // Because there was no overlap the producer->val edge is within the region
+        int r = locate(orderedProds[i]->def);
+        regions[r].sections.push_back( orderedProds[i] );
+      }
+
     }
   }
 
@@ -763,7 +788,7 @@ vector<Isomorphism> isos = Isomorphism::initialSplit(block);
 
   // Push singleton blocks from possibles to definites...
   for(int i=0; i<isos.size(); i++)
-    isos[i].confirm(true);  
+    isos[i].confirm();  
   threshold(isos, 5, -1);    
   isos[4].dump(); 
 
@@ -804,7 +829,7 @@ vector<Isomorphism> isos = Isomorphism::initialSplit(block);
   remainder.markConstants();
   remainder.expandToDepth(64);
   fprintf(f,"digraph {\n");
-  vector<RegionX> isoPop = isos[0].eqClassRegions(block);  // TODO: Keep changing!!
+  vector<RegionX> isoPop = isos[1].eqClassRegions(block);  // TODO: Keep changing!!
   for(int i=0; i<isoPop.size(); i++)
   {
     char colour[32];
