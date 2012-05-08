@@ -769,6 +769,16 @@ Instruction *fold(Block *graph, RegionX *marked)
 // Output ordering:
 //   scan inst in order, scan targets in order, each val outside region is output
 
+int findVal(vector< vector<Value*> > const &vals, Value *v)
+{
+  for(int i=0; i<vals.size(); i++)
+  {
+    if( find(vals[i].begin(), vals[i].end(), v) != vals[i].end() )
+      return i;
+  }
+  return -1;
+}
+
 void fold(Isomorphism *iso, Block *block)
 {
 int n = iso->regions.size();
@@ -800,6 +810,27 @@ vector<Value*> newVals;
   for(int i=0; i<vals.size(); i++)
     newVals.push_back( new Value(vals[i][0]->type) );
 
+  for(int i=0; i<newInsts.size(); i++)
+  {
+    vector<Value*> oneIso = slice2(newInsts,0);   // Back to Section::heads for this region
+    for(int j=0; j<insts[i][0].inputs.size(); j++)
+    {
+      Value *v = insts[i][0].inputs[j];
+      vector<Value*>::iterator it = find(oneIso.begin(), oneIso.end(), v);
+      if(it==oneIso.end()) // Or was a region/block input ...
+      {
+        newInsts[i].inputs.push_back( inside->input( v->type ) );
+        // But now we have an issue if inputs are shared between instructions, must reflect sharing
+      //... else create a new input to the block
+      }
+      else
+      {
+      // ... if it is internal then map it across
+      //   ... update value uses
+      }
+    }
+
+  }
   // Structure is still missing... inputs/outputs sources/targets defs/uses...
 }
 
