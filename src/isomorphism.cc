@@ -200,6 +200,8 @@ vector<vector<Instruction*> > possibles;
       {
         definite.push_back(*pos);
         possibles[i].erase(pos);
+        if(possibles[i].size()==0)
+          possibles.erase( possibles.begin()+i );
         return;
       }
     }
@@ -233,6 +235,15 @@ vector<vector<Instruction*> > possibles;
     }
     possibles = newPart;
   }
+
+  /* Debugging
+  bool valid()
+  {
+    for(int i=0; i<possibles.size(); i++)
+      if(possibles[i].size()==0)
+        return false;
+    return true;
+  } */
 
 };
 
@@ -294,6 +305,34 @@ public:
     }
   }
 
+  void dump()
+  {
+    for(int k=0; k<sections.size(); k++)
+    {
+      printf("  Section %d\n", k);
+      Value *v = sections[k].head;
+      printf("  %s\n", v->repr().c_str());
+      for(int l=0; l<sections[k].definite.size(); l++)
+        printf("  %d,%d: %s\n", k, l, sections[k].definite[l]->repr().c_str());
+      vector<vector<Instruction*> > &useBins = sections[k].possibles;
+      for(int k=0; k<useBins.size(); k++)
+      {
+        printf("    >");
+        for(int l=0; l<useBins[k].size(); l++)
+          printf("%s ",useBins[k][l]->repr().c_str());
+        printf("\n");
+      }
+    }
+  }
+
+  /* Debugging
+  bool valid()
+  {
+    for(int i=0; i<sections.size(); i++)
+      if(!sections[i].valid())
+        return false;
+    return true;
+  } */
 };
 
 /* Equality between Sections is defined over both shape and content. The shape 
@@ -666,7 +705,15 @@ typedef Partition< vector<Value*> > ValueFrontier ;
   void confirm()
   {
     for(int i=0; i<regions.size(); i++)
+    {
       regions[i].confirm();
+      /*if(!regions[i].valid())
+      {
+        printf("SHIT GONE BAD %d\n",i);
+        regions[i].dump();
+        exit(-1);
+      }*/
+    }
   }
 
   vector<RegionX> eqClassRegions(Block *block)
@@ -716,25 +763,18 @@ typedef Partition< vector<Value*> > ValueFrontier ;
     for(int j=0; j<regions.size(); j++)
     {
       printf("Region %d\n", j);
-      IsoRegion &cur = regions[j];
-      for(int k=0; k<cur.sections.size(); k++)
-      {
-        printf("  Section %d\n", k);
-        Value *v = cur.sections[k].head;
-        printf("  %s\n", v->repr().c_str());
-        for(int l=0; l<cur.sections[k].definite.size(); l++)
-          printf("  %d,%d: %s\n", k, l, cur.sections[k].definite[l]->repr().c_str());
-        vector<vector<Instruction*> > &useBins = cur.sections[k].possibles;
-        for(int k=0; k<useBins.size(); k++)
-        {
-          printf("    >");
-          for(int l=0; l<useBins[k].size(); l++)
-            printf("%s ",useBins[k][l]->repr().c_str());
-          printf("\n");
-        }
-      }
+      regions[j].dump();
     }
   }
+
+  /* Debugging
+  bool valid()
+  {
+    for(int i=0; i<regions.size(); i++)
+      if(!regions[i].valid())
+        return false;
+    return true;
+  } */
 };
 
 // There are two sensible measures of size for an Isomorphism:
@@ -762,6 +802,7 @@ vector<Isomorphism> isos = Isomorphism::initialSplit(block);
   threshold(isos, 5, -1);    
   printf("%zu blocks\n", isos.size());
 
+
 // Splitting step -> pushed into search process eventually
   vector<Isomorphism> newSplits;
   for(int i=0; i<isos.size(); i++)
@@ -771,6 +812,15 @@ vector<Isomorphism> isos = Isomorphism::initialSplit(block);
   }
   isos = newSplits;
 
+  /*for(int i=0; i<isos.size(); i++)
+  {
+    if(!isos[i].valid())
+    {
+      printf("BROKE ON %d\n",i);
+      isos[i].dump();
+      exit(-1);
+    }
+  }*/
   printf("%zu blocks\n", isos.size());
 
   // Push singleton blocks from possibles to definites...
