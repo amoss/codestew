@@ -341,6 +341,45 @@ public:
     }
   }
 
+  /* Clone (deep-copy) the sub-graph in the block described by this IsoRegion.
+  */
+  Block *extract(Block *block)
+  {
+    Block *clone = new Block(block->machine);
+    map<Instruction*,int> sectionMap, definiteMap;
+    map<Value*,Value*> mapOldNew, mapNewOld;
+    for(int i=0; i<sections.size(); i++)
+      mapOldNew[sections[i].head] = new Value( sections[i].head->type );
+    for(int i=0; i<sections.size(); i++)
+      for(int j=0; j<sections[i].definite.size(); j++)
+      {
+        Instruction *oldInst = sections[i].definite[j];
+        Instruction *inst = new Instruction(clone, oldInst->opcode);
+        sectionMap[inst] = i;
+        definiteMap[inst] = j;
+        for(int k=0; k<oldInst->inputs.size(); k++)
+        {
+          Value *oldInp = oldInst->inputs[k];
+          if( mapOldNew.count(oldInp) == 0)
+            mapOldNew[ oldInp ] = clone->input(oldInp->type);
+          inst->addInput(mapOldNew[ oldInp ]);
+        }
+      }
+    for(int i=0; i<clone->numInsts(); i++)
+    {
+      Instruction *inst = clone->getInst(i);
+      Instruction *oldInst = sections[ sectionMap[inst] ].definite[ definiteMap[inst] ];
+      for(int j=0; j<oldInst->outputs.size(); j++)
+      {
+        Value *oldOut = oldInst->outputs[k];
+        if( mapOldNew.count(oldOut) == 0)
+          mapOldNew[ oldOut ] = clone->output(oldInp->type);
+        inst->addOutput(mapOldNew[ oldOut ]);
+      }
+    }
+    // MUST find a way to store the mapping so that the other regions are mapped identically....
+  }
+
   /* Debugging
   bool valid()
   {
@@ -779,59 +818,39 @@ int findVal(vector< vector<Value*> > const &vals, Value *v)
   return -1;
 }
 
+
 void fold(Isomorphism *iso, Block *block)
 {
-int n = iso->regions.size();
-vector<vector<Value*> > vals;
-  // Assume all IsoRegions have the same Section layout
-  for(int i=0; i<iso->regions[0].sections.size(); i++)
+
+sectionMap, definiteMap, valueMap, clone <- regions[0].extract(block);
+Projection clone = regions[0].extract(block);
+
+  for(int i=0; i<iso->regions.size(); i++)
   {
-    vector<Value*> headSlice;
-    for(int j=0; j<n; j++)
-      headSlice.push_back( iso->regions[j].sections[i].head );
-    vals.push_back( headSlice );
-  }
-vector<vector<Instruction*> > insts;
-  for(int i=0; i<iso->regions[0].sections.size(); i++)
-  {
-    for(int j=0; j<iso->regions[0].sections[i].definite.size(); j++)
+    Instruction *fold = new Instruction(block, &foldOp);
+    for(int j=0; j<clone.block->numInputs(); j++)
     {
-      vector<Instruction*> sectionDefs;
-      for(int k=0; k<n; k++)
-        sectionDefs.push_back( iso->regions[k].sections[i].definite[j] );
-      insts.push_back( sectionDefs );
+      Value *newInp = clone.block->getInput(i);
+      Value *oldInp = clone.mapNewOld(newInp);
+      for(int k=0; k<oldInp->uses.size(); k++)
+        ...
+      // Each input has a use in one of the region instructions
+      // Replace with a use in the new fold instruction
+      // Add the value as an input in the fold
     }
   }
-Block *inside = new Block(block->machine);
-vector<Instruction *> newInsts;
-  for(int i=0; i<insts.size(); i++)
-    newInsts.push_back( new Instruction(inside,insts[i][0]->opcode) );
-vector<Value*> newVals;
-  for(int i=0; i<vals.size(); i++)
-    newVals.push_back( new Value(vals[i][0]->type) );
 
-  for(int i=0; i<newInsts.size(); i++)
-  {
-    vector<Value*> oneIso = slice2(newInsts,0);   // Back to Section::heads for this region
-    for(int j=0; j<insts[i][0].inputs.size(); j++)
-    {
-      Value *v = insts[i][0].inputs[j];
-      vector<Value*>::iterator it = find(oneIso.begin(), oneIso.end(), v);
-      if(it==oneIso.end()) // Or was a region/block input ...
-      {
-        newInsts[i].inputs.push_back( inside->input( v->type ) );
-        // But now we have an issue if inputs are shared between instructions, must reflect sharing
-      //... else create a new input to the block
-      }
-      else
-      {
-      // ... if it is internal then map it across
-      //   ... update value uses
-      }
-    }
+/*
+ Pass one: build section head -> new val map
+ Pass two: ordered scan of all inst.inputs -> append to val map
+ Pass three: ordered scan of all inst.outputs -> append to val map
+ Pass four: map one IsoRegion through val-map -> create new block structure
+            only use of map: hence map only needs to map from single region
+ Pass five: add new instruction vertices to original block
+ Pass six: move all I/O edges to new instructions -> leave disjoint regions 
+ Pass seven: remove all vertices and edges within the IsoRegions
+*/
 
-  }
-  // Structure is still missing... inputs/outputs sources/targets defs/uses...
 }
 
 void isoEntry(Block *block)
