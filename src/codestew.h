@@ -98,6 +98,9 @@ public:
   void input(Value *v);
   void output(Value *v);
 
+  void removeVal(Value *);
+  void removeInst(Instruction *);
+
   Block *clone();
   void copyInto(Block *result);
 

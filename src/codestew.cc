@@ -118,6 +118,29 @@ Value *result = new Value(type);
   return result;
 }
 
+void Block::removeVal(Value *val)
+{
+// Assume the owner is correct...
+int i = val->ref;
+int j = values.size()-1;
+  values[j]->ref = i;
+  values[i] = values[j];
+  delete val;
+  values.erase( values.end()-1 );
+}
+
+void Block::removeInst(Instruction *inst)
+{
+// Assume the owner is correct...
+int i = inst->ref;
+int j = insts.size()-1;
+  insts[j]->ref = i;
+  insts[i] = insts[j];
+  delete inst;
+  insts.erase( insts.end()-1 );
+}
+
+
 Value *Block::constant(Type *type, uint64 init)
 {
 Value *v;
@@ -314,10 +337,13 @@ char line[180];
   {
     Instruction *inst = insts[i];
     sprintf(line,"Inst %d: [", i);
-    for(int j=0; j<inst->outputs.size(); j++)
-      sprintf(line+strlen(line),"%llu ",inst->outputs[j]->ref);
-    sprintf(line+strlen(line),"] <- %s [", inst->opcode->name);
     // Tolerate broken instructions to allow intermediate states in graph mutations
+    for(int j=0; j<inst->outputs.size(); j++)
+      if(inst->outputs[j]==NULL)
+        sprintf(line+strlen(line),"emp ");
+      else
+        sprintf(line+strlen(line),"%llu ",inst->outputs[j]->ref);
+    sprintf(line+strlen(line),"] <- %s [", inst->opcode->name);
     for(int j=0; j<inst->inputs.size(); j++)
       if(inst->inputs[j]==NULL)
         sprintf(line+strlen(line),"emp ");
@@ -353,7 +379,8 @@ FILE *f = fopen(filename,"w");
       if(inst->inputs[j]!=NULL)
         fprintf(f,"v%llu -> i%d;\n", inst->inputs[j]->ref, i);
     for(int j=0; j<inst->outputs.size(); j++)
-      fprintf(f,"i%d -> v%llu;\n", i, inst->outputs[j]->ref);
+      if(inst->outputs[j]!=NULL)
+        fprintf(f,"i%d -> v%llu;\n", i, inst->outputs[j]->ref);
   }
   fprintf(f,"}");
   fclose(f);

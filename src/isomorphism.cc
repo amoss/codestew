@@ -882,7 +882,29 @@ ProjectionX clone = iso->regions[0].extract(block);
       isoInp->uses.push_back( fold );
       fold->inputs.push_back( isoInp );
     }
+    // Each output is a def of a single Value. In the clone each output has exactly one def.
+    for(int j=0; j<clone.target->numOutputs(); j++)
+    {
+      Value *op = clone.target->getOutput(j);
+      Instruction *orig = op->def;
+      int idx = find( orig->outputs.begin(), orig->outputs.end(), op ) - orig->outputs.begin();
+      // Find the instruction/operand in this region isomorphic to the use in the clone.
+      Instruction *opProd = r.sections[ clone.sectionMap[orig] ].definite[ clone.definiteMap[orig] ];
+      Value *isoOp = opProd->outputs[idx];
+      opProd->outputs[idx]=NULL;
+      isoOp->def = fold;
+      fold->outputs.push_back( isoOp );
+    }
+    // Remove the old region from the block
+    /*for(int j=0; j<r.sections.size(); j++)
+    {
+      block->removeVal( r.sections[j].head );
+      for(int k=0; k<r.sections[j].definite.size(); k++)
+        block->removeInst( r.sections[j].definite[k] );
+    }
+    */
   }
+
 
   cout << clone.target->dump() << endl;
 /*
