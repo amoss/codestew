@@ -1,5 +1,6 @@
 #include "vis.h"
 #include <stdio.h>
+#include <iostream>
 #include <algorithm>
 
 using namespace std;
@@ -249,6 +250,15 @@ vector<vector<Instruction*> > possibles;
 
 };
 
+// TODO: Merge this with the Projection in codestew.h
+class ProjectionX
+{
+  public:
+  Block *source, *target;
+  map<Instruction*,int> sectionMap, definiteMap;
+  map<Value*,Value*> oldInternalNew, newInternalOld;
+};
+
 class IsoRegion
 {
 public:
@@ -342,42 +352,69 @@ public:
   }
 
   /* Clone (deep-copy) the sub-graph in the block described by this IsoRegion.
+
+     This operation will be used as a precursor to cutting the sub-graph from the original
+     Block. As a result of this intended use we must be careful about sharing on the boundary
+     of the region. If a Value (outside the region) is used by multiple instruction operands
+     (inside the region) then do not share these edges. This implies that a fresh input / output
+     on the Block will be created for every crossing edge. Although this seems inefficient at
+     first glance it guarantees that the clone+cut is collapsing a region into a vertex on the
+     graph, and there are no changes to the topology around the region.
+
+     The worst-case for sharing inputs / outputs is that the IsoRegion that we clone shares a
+     vertex outside the region, but no other IsoRegion does. Once the shared vertex is collapsed
+     to a single input in the clone it cannot be resplit for the other regions, breaking the 
+     isomorphism.
   */
-  Block *extract(Block *block)
+  ProjectionX extract(Block *block)
   {
-    Block *clone = new Block(block->machine);
-    map<Instruction*,int> sectionMap, definiteMap;
-    map<Value*,Value*> mapOldNew, mapNewOld;
+    ProjectionX result;
+    result.source = block;
+    result.target = new Block(block->machine);
     for(int i=0; i<sections.size(); i++)
-      mapOldNew[sections[i].head] = new Value( sections[i].head->type );
+      result.oldInternalNew[sections[i].head] = result.target->value( sections[i].head->type );
     for(int i=0; i<sections.size(); i++)
       for(int j=0; j<sections[i].definite.size(); j++)
       {
         Instruction *oldInst = sections[i].definite[j];
-        Instruction *inst = new Instruction(clone, oldInst->opcode);
-        sectionMap[inst] = i;
-        definiteMap[inst] = j;
+        Instruction *inst = result.target->instruction(oldInst->opcode);
+        result.sectionMap[inst] = i;
+        result.definiteMap[inst] = j;
         for(int k=0; k<oldInst->inputs.size(); k++)
         {
           Value *oldInp = oldInst->inputs[k];
-          if( mapOldNew.count(oldInp) == 0)
-            mapOldNew[ oldInp ] = clone->input(oldInp->type);
-          inst->addInput(mapOldNew[ oldInp ]);
+          if( result.oldInternalNew.count(oldInp) == 0)
+            inst->addInput(result.target->input(oldInp->type));
+          else
+            inst->addInput(result.oldInternalNew[ oldInp ]);
+        }
+        for(int k=0; k<oldInst->outputs.size(); k++)
+        {
+          Value *oldOut = oldInst->outputs[k];
+          if( result.oldInternalNew.count(oldOut) == 0)
+          {
+            Value *o = result.target->value(oldOut->type);
+            inst->addOutput(o);
+            result.target->output(o);
+          }
+          else
+            inst->addOutput(result.oldInternalNew[ oldOut ]);
         }
       }
-    for(int i=0; i<clone->numInsts(); i++)
+    /*for(int i=0; i<clone->numInsts(); i++)
     {
       Instruction *inst = clone->getInst(i);
-      Instruction *oldInst = sections[ sectionMap[inst] ].definite[ definiteMap[inst] ];
+      Instruction *oldInst = sections[ result.sectionMap[inst] ].definite[ result.definiteMap[inst] ];
       for(int j=0; j<oldInst->outputs.size(); j++)
       {
         Value *oldOut = oldInst->outputs[k];
-        if( mapOldNew.count(oldOut) == 0)
+        if( result.oldInternalNew.count(oldOut) == 0)
           mapOldNew[ oldOut ] = clone->output(oldInp->type);
         inst->addOutput(mapOldNew[ oldOut ]);
       }
-    }
+    }*/
     // MUST find a way to store the mapping so that the other regions are mapped identically....
+    return result;
   }
 
   /* Debugging
@@ -821,25 +858,33 @@ int findVal(vector< vector<Value*> > const &vals, Value *v)
 
 void fold(Isomorphism *iso, Block *block)
 {
-
-sectionMap, definiteMap, valueMap, clone <- regions[0].extract(block);
-Projection clone = regions[0].extract(block);
+ProjectionX clone = iso->regions[0].extract(block);
 
   for(int i=0; i<iso->regions.size(); i++)
   {
-    Instruction *fold = new Instruction(block, &foldOp);
-    for(int j=0; j<clone.block->numInputs(); j++)
+    IsoRegion &r = iso->regions[i];
+    Instruction *fold = block->instruction(new Opcode("fold",clone.target->numInputs(),0));
+    // Each input is a use of a single Value. In the clone each input has exactly one use.
+    for(int j=0; j<clone.target->numInputs(); j++)
     {
-      Value *newInp = clone.block->getInput(i);
-      Value *oldInp = clone.mapNewOld(newInp);
-      for(int k=0; k<oldInp->uses.size(); k++)
-        ...
-      // Each input has a use in one of the region instructions
-      // Replace with a use in the new fold instruction
-      // Add the value as an input in the fold
+      Value *inp = clone.target->getInput(j);
+      if(inp->uses.size()!=1)  {
+        printf("Clone input with multiple uses!\n");
+        exit(-1);
+      }
+      Instruction *orig = inp->uses[0];
+      int idx = find( orig->inputs.begin(), orig->inputs.end(), inp ) - orig->inputs.begin();
+      // Find the instruction/operand in this region isomorphic to the use in the clone.
+      Instruction *inpUser = r.sections[ clone.sectionMap[orig] ].definite[ clone.definiteMap[orig] ];
+      Value *isoInp = inpUser->inputs[idx];
+      inpUser->inputs[idx]=NULL;
+      isoInp->uses.erase( find(isoInp->uses.begin(), isoInp->uses.end(), inpUser) );
+      isoInp->uses.push_back( fold );
+      fold->inputs.push_back( isoInp );
     }
   }
 
+  cout << clone.target->dump() << endl;
 /*
  Pass one: build section head -> new val map
  Pass two: ordered scan of all inst.inputs -> append to val map
@@ -903,6 +948,7 @@ vector<Isomorphism> isos = Isomorphism::initialSplit(block);
   // classification [ Section(n) within iso (diff region) | Section(n) (same)
   // | Outside all IsoRegions ]
 
+  fold(&isos[1], block);
 
   // Hmmmmmmmmmmmmmmmmmmmmmm
   // Algorithm:
@@ -919,6 +965,8 @@ vector<Isomorphism> isos = Isomorphism::initialSplit(block);
   //  isos[i].dump(); 
   //}
 
+  block->dot("crap2.dot");
+/*    Fold instructions are unreachable
   FILE *f = fopen("crap2.dot","wt");
   RegionX remainder(block);
   for(int i=0; i<block->numInputs(); i++)
@@ -938,5 +986,5 @@ vector<Isomorphism> isos = Isomorphism::initialSplit(block);
   char defColour[] = "white";
   remainder.dotColourSet(f,defColour);
   fprintf(f,"}\n");
-  fclose(f);
+  fclose(f);*/
 }

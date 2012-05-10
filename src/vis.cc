@@ -94,7 +94,8 @@ Value *val = block->getValue(idx);
     for(defined=0; defined<inst->inputs.size(); defined++)
     {
       //printf("Check %d %llu\n",defined,inst->inputs[defined]->ref);
-      if( !vals[ inst->inputs[defined]->ref ] )
+      // Treat broken instructions as jammed so we can tolerate intermediate graphs during mutation.
+      if( inst->inputs[defined] == NULL || !vals[ inst->inputs[defined]->ref ] )
         break;
     }
     if( defined < inst->inputs.size() )

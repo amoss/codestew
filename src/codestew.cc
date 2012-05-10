@@ -317,8 +317,12 @@ char line[180];
     for(int j=0; j<inst->outputs.size(); j++)
       sprintf(line+strlen(line),"%llu ",inst->outputs[j]->ref);
     sprintf(line+strlen(line),"] <- %s [", inst->opcode->name);
+    // Tolerate broken instructions to allow intermediate states in graph mutations
     for(int j=0; j<inst->inputs.size(); j++)
-      sprintf(line+strlen(line),"%llu ",inst->inputs[j]->ref);
+      if(inst->inputs[j]==NULL)
+        sprintf(line+strlen(line),"emp ");
+      else
+        sprintf(line+strlen(line),"%llu ",inst->inputs[j]->ref);
     sprintf(line+strlen(line),"]\n");
     result += line;
   }
@@ -344,8 +348,10 @@ FILE *f = fopen(filename,"w");
   {
     Instruction *inst = insts[i];
     fprintf(f,"i%d [shape=none,label=\"%s\"];\n", i, inst->opcode->name);
+    // Tolerate broken instructions so that we can view intermediate states during graph mutation
     for(int j=0; j<inst->inputs.size(); j++)
-      fprintf(f,"v%llu -> i%d;\n", inst->inputs[j]->ref, i);
+      if(inst->inputs[j]!=NULL)
+        fprintf(f,"v%llu -> i%d;\n", inst->inputs[j]->ref, i);
     for(int j=0; j<inst->outputs.size(); j++)
       fprintf(f,"i%d -> v%llu;\n", i, inst->outputs[j]->ref);
   }
