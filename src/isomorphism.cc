@@ -256,7 +256,9 @@ class ProjectionX
   public:
   Block *source, *target;
   map<Instruction*,int> sectionMap, definiteMap;
-  map<Value*,Value*> oldInternalNew, newInternalOld;
+  map<Value*,Value*> oldInternalNew;
+  // Q: given an I/O vertex and Region i, which section head does it map onto or which vertex does it
+  //    shadow?
 };
 
 class IsoRegion
@@ -371,15 +373,33 @@ public:
     ProjectionX result;
     result.source = block;
     result.target = new Block(block->machine);
+
+    vector<Value*>      inside = values();    // All Values inside the IsoRegion are section::heads.
+    vector<Instruction*> insts = allDefinites(); // Concatenate sections in order
+    // Will this cover case C??? New Pass 1
+    for(int i=0; i<inside.size(); i++)
+      result.internals[ result.target->input(inside[i]) ] = inside[i];
+    for(int i=0; i<insts.size(); i++)
+    {
+      for(int j=0; j<insts[i].inputs.size(); j++)
+      {
+        if( find(inside.begin(), inside.end(), insts[i].inputs[j])==inside.end() )
+          result.shadows[ result.target->input(insts[i].inputs[j]) ] = insts[i].inputs[j];
+      }
+    }
+
+    
+
+    // Old Pass 1: Build Value structure within new Block (inputs, outputs, internal)
     for(int i=0; i<sections.size(); i++)
-      result.oldInternalNew[sections[i].head] = result.target->value( sections[i].head->type );
-    for(int i=0; i<sections.size(); i++)
+    {
+      Instruction *prod = sections[i].head->def;
+      if( locate(prod) == -1 )
+        result.oldInternalNew[sections[i].head] = result.target->input( sections[i].head->type );
+      else
+        result.oldInternalNew[sections[i].head] = result.target->value( sections[i].head->type );
       for(int j=0; j<sections[i].definite.size(); j++)
       {
-        Instruction *oldInst = sections[i].definite[j];
-        Instruction *inst = result.target->instruction(oldInst->opcode);
-        result.sectionMap[inst] = i;
-        result.definiteMap[inst] = j;
         for(int k=0; k<oldInst->inputs.size(); k++)
         {
           Value *oldInp = oldInst->inputs[k];
@@ -388,6 +408,34 @@ public:
           else
             inst->addInput(result.oldInternalNew[ oldInp ]);
         }
+        for(int k=0; k<oldInst->outputs.size(); k++)
+        {
+          Value *oldInp = oldInst->inputs[k];
+          if( result.oldInternalNew.count(oldInp) == 0)
+            inst->addOutput(result.target->input(oldInp->type));
+          else
+            inst->addOutput(result.oldInternalNew[ oldInp ]);
+        }
+    }
+
+
+    for(int i=0; i<sections.size(); i++)
+      for(int j=0; j<sections[i].definite.size(); j++)
+      {
+        Instruction *oldInst = sections[i].definite[j];
+        Instruction *inst = result.target->instruction(oldInst->opcode);
+        result.sectionMap[inst] = i;
+        result.definiteMap[inst] = j;
+        // CASE A
+        for(int k=0; k<oldInst->inputs.size(); k++)
+        {
+          Value *oldInp = oldInst->inputs[k];
+          if( result.oldInternalNew.count(oldInp) == 0)
+            inst->addInput(result.target->input(oldInp->type));
+          else
+            inst->addInput(result.oldInternalNew[ oldInp ]);
+        }
+        // CASE B
         for(int k=0; k<oldInst->outputs.size(); k++)
         {
           Value *oldOut = oldInst->outputs[k];
@@ -867,6 +915,7 @@ ProjectionX clone = iso->regions[0].extract(block);
     // Each input is a use of a single Value. In the clone each input has exactly one use.
     for(int j=0; j<clone.target->numInputs(); j++)
     {
+      // Case C Section::head inputs may not be single-use
       Value *inp = clone.target->getInput(j);
       if(inp->uses.size()!=1)  {
         printf("Clone input with multiple uses!\n");
