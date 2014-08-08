@@ -355,18 +355,19 @@ public:
 
   /* Clone (deep-copy) the sub-graph in the block described by this IsoRegion.
 
-     This operation will be used as a precursor to cutting the sub-graph from the original
-     Block. As a result of this intended use we must be careful about sharing on the boundary
-     of the region. If a Value (outside the region) is used by multiple instruction operands
-     (inside the region) then do not share these edges. This implies that a fresh input / output
-     on the Block will be created for every crossing edge. Although this seems inefficient at
-     first glance it guarantees that the clone+cut is collapsing a region into a vertex on the
-     graph, and there are no changes to the topology around the region.
+     This operation will be used as a precursor to cutting the sub-graph from the
+     original Block. As a result of this intended use we must be careful about sharing
+     on the boundary of the region. If a Value (outside the region) is used by multiple
+     instruction operands (inside the region) then do not share these edges. This
+     implies that a fresh input / output on the Block will be created for every crossing
+     edge. Although this seems inefficient at first glance it guarantees that the
+     clone+cut is collapsing a region into a vertex on the graph, and there are no
+     changes to the topology around the region.
 
-     The worst-case for sharing inputs / outputs is that the IsoRegion that we clone shares a
-     vertex outside the region, but no other IsoRegion does. Once the shared vertex is collapsed
-     to a single input in the clone it cannot be resplit for the other regions, breaking the 
-     isomorphism.
+     The worst-case for sharing inputs / outputs is that the IsoRegion that we clone
+     shares a vertex outside the region, but no other IsoRegion does. Once the shared
+     vertex is collapsed to a single input in the clone it cannot be resplit for the
+     other regions, breaking the isomorphism.
   */
   ProjectionX extract(Block *block)
   {
@@ -378,13 +379,17 @@ public:
     vector<Instruction*> insts = allDefinites(); // Concatenate sections in order
     // Will this cover case C??? New Pass 1
     for(int i=0; i<inside.size(); i++)
-      result.internals[ result.target->input(inside[i]) ] = inside[i];
+      if(locate(inside[i]->def)==-1)
+        result.shadows[ result.target->input(inside[i]->type) ] = inside[i];
+        // BUT this one should respect sharing internally...
+      else
+        result.internals[ result.target->input(inside[i]->type) ] = inside[i];
     for(int i=0; i<insts.size(); i++)
     {
       for(int j=0; j<insts[i].inputs.size(); j++)
       {
         if( find(inside.begin(), inside.end(), insts[i].inputs[j])==inside.end() )
-          result.shadows[ result.target->input(insts[i].inputs[j]) ] = insts[i].inputs[j];
+          result.shadows[ result.target->input(insts[i].inputs[j]->type) ] = insts[i].inputs[j];
       }
     }
 
